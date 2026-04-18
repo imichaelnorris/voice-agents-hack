@@ -22,7 +22,7 @@ index dd342cc..ef3064f 100644
  
        callback?(0.0)
 diff --git a/node_modules/cactus-react-native/lib/module/modelRegistry.js b/node_modules/cactus-react-native/lib/module/modelRegistry.js
-index ab63dd5..55fa581 100644
+index ab63dd5..2193202 100644
 --- a/node_modules/cactus-react-native/lib/module/modelRegistry.js
 +++ b/node_modules/cactus-react-native/lib/module/modelRegistry.js
 @@ -1,6 +1,6 @@
@@ -33,7 +33,7 @@ index ab63dd5..55fa581 100644
  let registryPromise = null;
  export function getRegistry() {
    return registryPromise ??= fetchRegistry();
-@@ -43,36 +43,43 @@ async function fetchRegistry() {
+@@ -43,38 +43,51 @@ async function fetchRegistry() {
      tags = []
    }) => {
      const weights = siblings.map(s => s.rfilename).filter(f => f.startsWith('weights/') && f.endsWith('.zip'));
@@ -98,9 +98,18 @@ index ab63dd5..55fa581 100644
 +      quantization
      };
    }));
++  // Route Gemma 4 E2B Core ML zip through Cloudflare. HF's Xet-bridge is
++  // rate-limited and slow; CF serves ~CDN speeds.
++  if (registry['gemma-4-e2b-it']?.quantization?.int4?.pro) {
++    registry['gemma-4-e2b-it'].quantization.int4.pro.apple =
++      'https://deepsteve.com/gemma-4-e2b-it-int4-apple.zip';
++  }
    return registry;
+ }
+ //# sourceMappingURL=modelRegistry.js.map
+\ No newline at end of file
 diff --git a/node_modules/cactus-react-native/src/modelRegistry.ts b/node_modules/cactus-react-native/src/modelRegistry.ts
-index 02197f8..68592ca 100644
+index 02197f8..dd4cdd9 100644
 --- a/node_modules/cactus-react-native/src/modelRegistry.ts
 +++ b/node_modules/cactus-react-native/src/modelRegistry.ts
 @@ -1,6 +1,6 @@
@@ -139,7 +148,7 @@ index 02197f8..68592ca 100644
  
        const base = `https://huggingface.co/${id}/resolve/${version}/weights/${key}`;
  
-@@ -94,25 +94,30 @@ async function fetchRegistry(): Promise<{ [key: string]: CactusModel }> {
+@@ -94,28 +94,40 @@ async function fetchRegistry(): Promise<{ [key: string]: CactusModel }> {
              (1024 * 1024)
          );
  
@@ -186,3 +195,13 @@ index 02197f8..68592ca 100644
        };
      })
    );
+ 
++  // Route Gemma 4 E2B Core ML zip through Cloudflare. HF's Xet-bridge is
++  // rate-limited and slow; CF serves ~CDN speeds.
++  if (registry['gemma-4-e2b-it']?.quantization?.int4?.pro) {
++    registry['gemma-4-e2b-it'].quantization.int4.pro.apple =
++      'https://deepsteve.com/gemma-4-e2b-it-int4-apple.zip';
++  }
++
+   return registry;
+ }
