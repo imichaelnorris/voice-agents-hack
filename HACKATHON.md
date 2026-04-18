@@ -26,13 +26,15 @@ Conference WiFi has client isolation — the phone can't reach Metro on the Mac'
 
 Free-tier ngrok gives a new subdomain each restart, so update step 3 each session. Configure Bundler in the RN dev menu won't work here — RN hardcodes `http://` and iOS ATS blocks plain HTTP.
 
-## Patch: cactus-react-native registry (int4-only models)
+## Patch: cactus-react-native registry
 
-`cactus-react-native@1.13.0`'s `modelRegistry.ts` excludes any model that doesn't publish **both** int4 and int8 weights. Several Gemma 4 variants (incl. `gemma-4-e2b-it`, `gemma-4-e4b-it`, `gemma-3n-e2b-it`) ship only int4, so they never land in the registry and `lm.download()` throws "model … with specified options not found" even with `quantization: 'int4'` set.
+`patches/cactus-react-native+1.13.0.patch` is applied automatically on `npm install` via the `postinstall` script (`patch-package`). It stacks three fixes against `cactus-react-native@1.13.0`'s `modelRegistry`:
 
-Fix lives in `patches/cactus-react-native+1.13.0.patch` — applied automatically on `npm install` via the `postinstall` script (`patch-package`). The patch lets a model into the registry if it has **either** int4 or int8, and only builds the quantization entry that actually exists (so an int4-only model still 404s if you ask it for int8, but at least the registry lookup succeeds).
+1. **Admit int4-only models.** Upstream excludes any model that doesn't publish *both* int4 and int8 weights. Several Gemma 4 variants (incl. `gemma-4-e2b-it`, `gemma-4-e4b-it`, `gemma-3n-e2b-it`) ship only int4, so they never land in the registry and `lm.download()` throws "model … with specified options not found" even with `quantization: 'int4'` set. The patch lets a model in if it has *either* quant, and only builds the entry that actually exists.
+2. **Bump `RUNTIME_VERSION` to `1.14.0`.** The `int4-apple` variant of `gemma-4-e2b-it` (the one with the Core ML `.mlpackage` files needed for Neural Engine inference) only exists at HF tag `v1.14`. Upstream pins to `v1.13`, which 404s.
+3. **Route the `gemma-4-e2b-it` apple zip through our Cloudflare R2 CDN** instead of HF. HF's Xet-bridge rate-limits anonymous download bandwidth, and the 4.68 GB Core ML zip is exactly the worst-case download. Hosted at `https://pub-59f20910ffb24ac4a79e942aec001bbb.r2.dev/gemma-4-e2b-it-int4-apple.zip`.
 
-If the patch ever stops applying cleanly after a cactus upgrade, regenerate with:
+Regenerate the patch after cactus upgrades:
 
 ```
 npx patch-package cactus-react-native
