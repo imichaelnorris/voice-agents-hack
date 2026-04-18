@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -33,8 +33,21 @@ import {
   useCactusSTT,
   type CactusLMMessage,
 } from 'cactus-react-native';
+import { ShaderWebView, extractShader } from './ShaderWebView';
 
 const VISION_MODEL = 'gemma-4-e2b-it';
+
+const SHADER_SYSTEM_PROMPT = `You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.
+
+The shader runs over a photo. Declare these uniforms and the varying at the top of your output:
+
+  precision mediump float;
+  uniform sampler2D u_texture;   // the input photo
+  uniform float u_time;          // seconds since start
+  uniform vec2 u_resolution;     // pixel dimensions
+  varying vec2 v_uv;             // texture coords, 0..1
+
+Write the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.`;
 // pro: true → pulls the -apple.zip variant that bundles the .mlpackage Core ML files.
 // Without these, Cactus falls back to CPU prefill and the vision encoder; with a 2B
 // multimodal model that means `std::bad_alloc` on capture-sized inputs.
@@ -519,6 +532,7 @@ function ReviewScreen({
       setError(null);
       try {
         const messages: CactusLMMessage[] = [
+          { role: 'system', content: SHADER_SYSTEM_PROMPT },
           {
             role: 'user',
             content: prompt,
@@ -527,7 +541,7 @@ function ReviewScreen({
         ];
         await lm.complete({
           messages,
-          options: { maxTokens: 512, temperature: 0.7 },
+          options: { maxTokens: 512, temperature: 0.2 },
           onToken: (token: string) => {
             setResponse(prev => prev + token);
           },
@@ -644,6 +658,11 @@ function ReviewScreen({
     }
   }, [response]);
 
+  const shaderSource = useMemo(
+    () => (response && !isGenerating ? extractShader(response) : null),
+    [response, isGenerating],
+  );
+
   const lmBusy = lm.isDownloading || !lm.isDownloaded;
   const sttBusy = stt.isDownloading || !stt.isDownloaded;
 
@@ -671,6 +690,14 @@ function ReviewScreen({
     <View style={styles.screen}>
       {photoUri ? (
         <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      ) : null}
+      {photoUri && shaderSource && !isGenerating ? (
+        <ShaderWebView
+          photoUri={photoUri}
+          shader={shaderSource}
+          style={StyleSheet.absoluteFill}
+          onError={msg => setError(`Shader: ${msg}`)}
+        />
       ) : null}
       <View style={[StyleSheet.absoluteFill, styles.scrim]} />
 
