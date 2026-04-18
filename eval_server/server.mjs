@@ -44,10 +44,13 @@ function flushQueue() {
   if (!phoneSocket || phoneSocket.readyState !== 1) return;
   while (queue.length > 0) {
     const req = queue.shift();
-    inFlight.set(req.id, { prompt: req.prompt, sentAt: Date.now() });
+    inFlight.set(req.id, { prompt: req.prompt, systemPrompt: req.systemPrompt, sentAt: Date.now() });
     try {
-      phoneSocket.send(JSON.stringify({ type: 'inference', id: req.id, prompt: req.prompt }));
-      logLine({ ev: 'sent', id: req.id, prompt: req.prompt });
+      const msg = { type: 'inference', id: req.id, prompt: req.prompt };
+      if (req.systemPrompt) msg.systemPrompt = req.systemPrompt;
+      if (req.options) msg.options = req.options;
+      phoneSocket.send(JSON.stringify(msg));
+      logLine({ ev: 'sent', id: req.id, prompt: req.prompt, systemPrompt: req.systemPrompt, options: req.options });
     } catch (err) {
       console.error('[ws] send failed', err);
       queue.unshift(req);
@@ -90,12 +93,18 @@ const httpServer = http.createServer((req, res) => {
       try { payload = JSON.parse(body); } catch { res.statusCode = 400; res.end('bad json'); return; }
       const items = Array.isArray(payload?.prompts) ? payload.prompts : [];
       let added = 0;
+      // Default systemPrompt + options at the batch level if you don't want
+      // to repeat them on every prompt.
+      const batchSystemPrompt = typeof payload?.systemPrompt === 'string' ? payload.systemPrompt : undefined;
+      const batchOptions = payload?.options && typeof payload.options === 'object' ? payload.options : undefined;
       for (const item of items) {
         const id = String(item.id ?? randomUUID());
         const prompt = String(item.prompt ?? '');
         if (!prompt) continue;
-        queue.push({ id, prompt });
-        logLine({ ev: 'enqueued', id, prompt });
+        const systemPrompt = typeof item.systemPrompt === 'string' ? item.systemPrompt : batchSystemPrompt;
+        const options = item.options ?? batchOptions;
+        queue.push({ id, prompt, systemPrompt, options });
+        logLine({ ev: 'enqueued', id, prompt, systemPrompt, options });
         added++;
       }
       flushQueue();

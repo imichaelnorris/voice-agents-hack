@@ -951,17 +951,33 @@ function PromptEvalScreen({ onBack, lm }: { onBack: () => void; lm: LmHook }) {
     };
   }, []);
 
-  const runInference = useCallback(async (prompt: string): Promise<string> => {
-    let response = '';
-    await lmRef.current.complete({
-      messages: [{ role: 'user', content: prompt }],
-      options: { maxTokens: 1024, temperature: 0.7 },
-      onToken: (token: string) => {
-        response += token;
-      },
-    });
-    return response;
-  }, []);
+  const runInference = useCallback(
+    async (
+      prompt: string,
+      systemPrompt?: string,
+      reqOptions?: { maxTokens?: number; temperature?: number },
+    ): Promise<string> => {
+      let response = '';
+      const messages: CactusLMMessage[] = systemPrompt
+        ? [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: prompt },
+          ]
+        : [{ role: 'user', content: prompt }];
+      await lmRef.current.complete({
+        messages,
+        options: {
+          maxTokens: reqOptions?.maxTokens ?? 1024,
+          temperature: reqOptions?.temperature ?? 0.7,
+        },
+        onToken: (token: string) => {
+          response += token;
+        },
+      });
+      return response;
+    },
+    [],
+  );
 
   const handleOneShot = useCallback(async () => {
     if (isGenerating || !lm.isDownloaded) return;
@@ -988,7 +1004,7 @@ function PromptEvalScreen({ onBack, lm }: { onBack: () => void; lm: LmHook }) {
     async (req: EvalInferenceMsg) => {
       const ws = wsRef.current;
       try {
-        const response = await runInference(req.prompt);
+        const response = await runInference(req.prompt, req.systemPrompt, req.options);
         ws?.send(
           JSON.stringify({ type: 'response', id: req.id, response }),
         );
