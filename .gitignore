@@ -69,6 +69,10 @@ yarn-error.log
 # Claude
 .claude/
 
+# Per-session eval-server logs (one JSONL per run)
+eval_server/log/
+eval_server/batches/*.results.jsonl
+
 # TypeScript compiled output (we only commit .tsx/.ts sources)
 App.js
 __tests__/*.js
