@@ -1,0 +1,149 @@
+diff --git a/node_modules/cactus-react-native/lib/module/modelRegistry.js b/node_modules/cactus-react-native/lib/module/modelRegistry.js
+index ab63dd5..2d15f53 100644
+--- a/node_modules/cactus-react-native/lib/module/modelRegistry.js
++++ b/node_modules/cactus-react-native/lib/module/modelRegistry.js
+@@ -43,36 +43,43 @@ async function fetchRegistry() {
+     tags = []
+   }) => {
+     const weights = siblings.map(s => s.rfilename).filter(f => f.startsWith('weights/') && f.endsWith('.zip'));
+-    if (!weights.some(f => f.endsWith('-int4.zip')) || !weights.some(f => f.endsWith('-int8.zip'))) return;
++    const hasInt4 = weights.some(f => f.endsWith('-int4.zip'));
++    const hasInt8 = weights.some(f => f.endsWith('-int8.zip'));
++    if (!hasInt4 && !hasInt8) return;
+     const version = await resolveWeightVersion(id).catch(() => null);
+     if (!version) return;
+-    const key = weights.find(f => f.endsWith('-int4.zip')).replace('weights/', '').replace('-int4.zip', '');
++    const sampleWeight = weights.find(f => f.endsWith('-int4.zip')) ?? weights.find(f => f.endsWith('-int8.zip'));
++    const key = sampleWeight.replace('weights/', '').replace(/-int[48]\.zip$/, '');
+     const base = `https://huggingface.co/${id}/resolve/${version}/weights/${key}`;
+     const tree = await fetch(`https://huggingface.co/api/models/${id}/tree/${version}/weights`).then(r => r.ok ? r.json() : null).catch(() => null);
+     const sizeMb = suffix => Math.round((tree?.find(f => f.path === `weights/${key}${suffix}`)?.size ?? 0) / (1024 * 1024));
++    const quantization = {};
++    if (hasInt4) {
++      quantization.int4 = {
++        sizeMb: sizeMb('-int4.zip'),
++        url: `${base}-int4.zip`,
++        ...(weights.some(f => f.endsWith('-int4-apple.zip')) ? {
++          pro: {
++            apple: `${base}-int4-apple.zip`
++          }
++        } : {})
++      };
++    }
++    if (hasInt8) {
++      quantization.int8 = {
++        sizeMb: sizeMb('-int8.zip'),
++        url: `${base}-int8.zip`,
++        ...(weights.some(f => f.endsWith('-int8-apple.zip')) ? {
++          pro: {
++            apple: `${base}-int8-apple.zip`
++          }
++        } : {})
++      };
++    }
+     registry[key] = {
+       slug: key,
+       capabilities: tags.filter(t => !t.includes(':')),
+-      quantization: {
+-        int4: {
+-          sizeMb: sizeMb('-int4.zip'),
+-          url: `${base}-int4.zip`,
+-          ...(weights.some(f => f.endsWith('-int4-apple.zip')) ? {
+-            pro: {
+-              apple: `${base}-int4-apple.zip`
+-            }
+-          } : {})
+-        },
+-        int8: {
+-          sizeMb: sizeMb('-int8.zip'),
+-          url: `${base}-int8.zip`,
+-          ...(weights.some(f => f.endsWith('-int8-apple.zip')) ? {
+-            pro: {
+-              apple: `${base}-int8-apple.zip`
+-            }
+-          } : {})
+-        }
+-      }
++      quantization
+     };
+   }));
+   return registry;
+diff --git a/node_modules/cactus-react-native/src/modelRegistry.ts b/node_modules/cactus-react-native/src/modelRegistry.ts
+index 02197f8..c1506e5 100644
+--- a/node_modules/cactus-react-native/src/modelRegistry.ts
++++ b/node_modules/cactus-react-native/src/modelRegistry.ts
+@@ -64,19 +64,19 @@ async function fetchRegistry(): Promise<{ [key: string]: CactusModel }> {
+         .map((s: any) => s.rfilename as string)
+         .filter((f) => f.startsWith('weights/') && f.endsWith('.zip'));
+ 
+-      if (
+-        !weights.some((f) => f.endsWith('-int4.zip')) ||
+-        !weights.some((f) => f.endsWith('-int8.zip'))
+-      )
+-        return;
++      const hasInt4 = weights.some((f) => f.endsWith('-int4.zip'));
++      const hasInt8 = weights.some((f) => f.endsWith('-int8.zip'));
++      if (!hasInt4 && !hasInt8) return;
+ 
+       const version = await resolveWeightVersion(id).catch(() => null);
+       if (!version) return;
+ 
+-      const key = weights
+-        .find((f) => f.endsWith('-int4.zip'))!
++      const sampleWeight =
++        weights.find((f) => f.endsWith('-int4.zip')) ??
++        weights.find((f) => f.endsWith('-int8.zip'))!;
++      const key = sampleWeight
+         .replace('weights/', '')
+-        .replace('-int4.zip', '');
++        .replace(/-int[48]\.zip$/, '');
+ 
+       const base = `https://huggingface.co/${id}/resolve/${version}/weights/${key}`;
+ 
+@@ -94,25 +94,30 @@ async function fetchRegistry(): Promise<{ [key: string]: CactusModel }> {
+             (1024 * 1024)
+         );
+ 
++      const quantization: CactusModel['quantization'] = {} as any;
++      if (hasInt4) {
++        quantization.int4 = {
++          sizeMb: sizeMb('-int4.zip'),
++          url: `${base}-int4.zip`,
++          ...(weights.some((f) => f.endsWith('-int4-apple.zip'))
++            ? { pro: { apple: `${base}-int4-apple.zip` } }
++            : {}),
++        };
++      }
++      if (hasInt8) {
++        quantization.int8 = {
++          sizeMb: sizeMb('-int8.zip'),
++          url: `${base}-int8.zip`,
++          ...(weights.some((f) => f.endsWith('-int8-apple.zip'))
++            ? { pro: { apple: `${base}-int8-apple.zip` } }
++            : {}),
++        };
++      }
++
+       registry[key] = {
+         slug: key,
+         capabilities: (tags as string[]).filter((t) => !t.includes(':')),
+-        quantization: {
+-          int4: {
+-            sizeMb: sizeMb('-int4.zip'),
+-            url: `${base}-int4.zip`,
+-            ...(weights.some((f) => f.endsWith('-int4-apple.zip'))
+-              ? { pro: { apple: `${base}-int4-apple.zip` } }
+-              : {}),
+-          },
+-          int8: {
+-            sizeMb: sizeMb('-int8.zip'),
+-            url: `${base}-int8.zip`,
+-            ...(weights.some((f) => f.endsWith('-int8-apple.zip'))
+-              ? { pro: { apple: `${base}-int8-apple.zip` } }
+-              : {}),
+-          },
+-        },
++        quantization,
+       };
+     })
+   );
