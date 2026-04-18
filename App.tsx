@@ -31,10 +31,8 @@ import {
 import {
   useCactusLM,
   useCactusSTT,
-  setModelUrlOverride,
   type CactusLMMessage,
 } from 'cactus-react-native';
-import * as RNFS from '@dr.pogodin/react-native-fs';
 
 const VISION_MODEL = 'gemma-4-e2b-it';
 // pro: true → pulls the -apple.zip variant that bundles the .mlpackage Core ML files.
@@ -43,14 +41,6 @@ const VISION_MODEL = 'gemma-4-e2b-it';
 const VISION_MODEL_OPTIONS = { quantization: 'int4' as const, pro: true };
 const STT_MODEL = 'whisper-small';
 const STT_MODEL_OPTIONS = { quantization: 'int8' as const, pro: false };
-
-// Preflight CDN race: on first download, benchmark 200 MB from each source
-// so we can pick the faster endpoint for the real 4.68 GB download.
-const RACE_BYTES = 200 * 1024 * 1024;
-const HF_APPLE_URL =
-  'https://huggingface.co/Cactus-Compute/gemma-4-E2B-it/resolve/v1.14/weights/gemma-4-e2b-it-int4-apple.zip';
-const R2_APPLE_URL =
-  'https://pub-59f20910ffb24ac4a79e942aec001bbb.r2.dev/gemma-4-e2b-it-int4-apple.zip';
 
 // Mirrors the round-1 eval prompts in SHADER_PROMPT_ANALYSIS.md so tapping a chip
 // on the phone produces a directly comparable output to the Ollama baseline.
@@ -195,24 +185,6 @@ function BackIcon({ color = '#fff', size = 24 }: { color?: string; size?: number
         strokeWidth={2.2}
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-    </Svg>
-  );
-}
-
-function InfoIcon({ color = '#fff', size = 18 }: { color?: string; size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"
-        stroke={color}
-        strokeWidth={1.6}
-      />
-      <Path
-        d="M9.1 9.5a3 3 0 0 1 5.8 0c0 1.5-2.9 2.5-2.9 4M12 17.5v.01"
-        stroke={color}
-        strokeWidth={1.8}
-        strokeLinecap="round"
       />
     </Svg>
   );
@@ -497,13 +469,8 @@ function ReviewScreen({
   const [error, setError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   const [typed, setTyped] = useState('');
-  const [raceState, setRaceState] = useState<'idle' | 'running' | 'done' | 'skip'>('idle');
-  const [hfProgress, setHfProgress] = useState(0);
-  const [r2Progress, setR2Progress] = useState(0);
-  const [hfTimeMs, setHfTimeMs] = useState<number | null>(null);
-  const [r2TimeMs, setR2TimeMs] = useState<number | null>(null);
-  const [raceWinner, setRaceWinner] = useState<'hf' | 'r2' | null>(null);
-  const [showRaceInfo, setShowRaceInfo] = useState(false);
+  const [downloadStartMs, setDownloadStartMs] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState(Date.now());
 
   const audioBuffer = useRef<number[]>([]);
   const dataSub = useRef<{ remove: () => void } | null>(null);
@@ -514,94 +481,22 @@ function ReviewScreen({
 
   const lmAttempted = useRef(false);
   const sttAttempted = useRef(false);
-  const raceAttempted = useRef(false);
-
-  // Mirror lm.isDownloaded into a ref so the race effect can re-check it after
-  // waiting for the hook's internal modelExists() probe to resolve.
-  const isDownloadedRef = useRef(lm.isDownloaded);
-  useEffect(() => { isDownloadedRef.current = lm.isDownloaded; }, [lm.isDownloaded]);
-
-  // Preflight CDN race: fetch 200 MB from HF and R2 in parallel, pick winner.
-  // Only runs when the full model isn't already downloaded.
-  useEffect(() => {
-    if (raceAttempted.current) return;
-    if (lm.isDownloading) return;
-    raceAttempted.current = true;
-
-    (async () => {
-      // Give the hook's own modelExists() probe ~300ms to flip isDownloaded.
-      await new Promise(r => setTimeout(r, 300));
-      if (isDownloadedRef.current) {
-        setRaceState('skip');
-        return;
-      }
-      setRaceState('running');
-      const hfPath = `${RNFS.CachesDirectoryPath}/race-hf.bin`;
-      const r2Path = `${RNFS.CachesDirectoryPath}/race-r2.bin`;
-      await RNFS.unlink(hfPath).catch(() => {});
-      await RNFS.unlink(r2Path).catch(() => {});
-
-      const rangeHeader = `bytes=0-${RACE_BYTES - 1}`;
-      const started = Date.now();
-
-      const hfJob = RNFS.downloadFile({
-        fromUrl: HF_APPLE_URL,
-        toFile: hfPath,
-        headers: { Range: rangeHeader },
-        progressInterval: 100,
-        progress: res => {
-          setHfProgress(Math.min(1, res.bytesWritten / RACE_BYTES));
-        },
-      });
-      const r2Job = RNFS.downloadFile({
-        fromUrl: R2_APPLE_URL,
-        toFile: r2Path,
-        headers: { Range: rangeHeader },
-        progressInterval: 100,
-        progress: res => {
-          setR2Progress(Math.min(1, res.bytesWritten / RACE_BYTES));
-        },
-      });
-
-      let winner: 'hf' | 'r2' | null = null;
-      const hfP = hfJob.promise.then(() => {
-        const t = Date.now() - started;
-        setHfTimeMs(t);
-        if (!winner) { winner = 'hf'; setRaceWinner('hf'); }
-      });
-      const r2P = r2Job.promise.then(() => {
-        const t = Date.now() - started;
-        setR2TimeMs(t);
-        if (!winner) { winner = 'r2'; setRaceWinner('r2'); }
-      });
-
-      try {
-        await Promise.all([hfP, r2P]);
-      } catch (e) {
-        setError(`Race failed: ${e instanceof Error ? e.message : String(e)}`);
-      }
-
-      RNFS.unlink(hfPath).catch(() => {});
-      RNFS.unlink(r2Path).catch(() => {});
-
-      if (winner === 'hf') {
-        setModelUrlOverride('gemma-4-e2b-it', { proApple: HF_APPLE_URL });
-      }
-      setRaceState('done');
-    })();
-  }, [lm.isDownloaded, lm.isDownloading]);
 
   useEffect(() => {
-    if (
-      (raceState === 'done' || raceState === 'skip') &&
-      !lm.isDownloaded &&
-      !lm.isDownloading &&
-      !lmAttempted.current
-    ) {
+    if (!lm.isDownloaded && !lm.isDownloading && !lmAttempted.current) {
       lmAttempted.current = true;
+      setDownloadStartMs(Date.now());
       lm.download().catch(e => setError(`LM download: ${String(e)}`));
     }
-  }, [raceState, lm.isDownloaded, lm.isDownloading, lm.download]);
+  }, [lm.isDownloaded, lm.isDownloading, lm.download]);
+
+  // Tick once per second while the LM is downloading so the elapsed-time
+  // readout on the status line actually moves.
+  useEffect(() => {
+    if (!lm.isDownloading) return;
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [lm.isDownloading]);
 
   useEffect(() => {
     if (!stt.isDownloaded && !stt.isDownloading && !sttAttempted.current) {
@@ -791,41 +686,24 @@ function ReviewScreen({
         style={[styles.outputBox, { marginTop: insets.top + 12 }]}
         contentContainerStyle={styles.outputContent}
       >
-        {raceState === 'running' || (raceState === 'done' && !lm.isDownloaded) ? (
+        {lm.isDownloading ? (
           <View style={styles.raceCard}>
-            <View style={styles.raceHeader}>
-              <Text style={styles.raceTitle}>CDN race · first to 200 MB wins</Text>
-              <Pressable
-                onPress={() => setShowRaceInfo(true)}
-                hitSlop={10}
-                style={styles.raceInfoButton}
-              >
-                <InfoIcon color="#f5f7fa" size={16} />
-              </Pressable>
-            </View>
+            <Text style={styles.raceTitle}>
+              Downloading Gemma 4 E2B —{' '}
+              {downloadStartMs
+                ? `${Math.floor((nowMs - downloadStartMs) / 1000)}s elapsed`
+                : '…'}
+            </Text>
             <RaceBar
-              label="HuggingFace"
-              progress={hfProgress}
-              timeMs={hfTimeMs}
-              isWinner={raceWinner === 'hf'}
-              raceDone={raceState === 'done'}
+              label="4.68 GB"
+              progress={lm.downloadProgress ?? 0}
+              timeMs={null}
+              isWinner={false}
+              raceDone={false}
             />
-            <RaceBar
-              label="Cloudflare R2"
-              progress={r2Progress}
-              timeMs={r2TimeMs}
-              isWinner={raceWinner === 'r2'}
-              raceDone={raceState === 'done'}
-            />
-            {raceState === 'done' && raceWinner && hfTimeMs && r2TimeMs ? (
-              <Text style={styles.raceSummary}>
-                {raceWinner === 'r2' ? 'R2' : 'HF'} won —{' '}
-                {(Math.max(hfTimeMs, r2TimeMs) / Math.min(hfTimeMs, r2TimeMs)).toFixed(1)}× faster. Downloading full model from winner…
-              </Text>
-            ) : null}
           </View>
         ) : null}
-        {statusLine && !(raceState === 'running' || (raceState === 'done' && !lm.isDownloaded)) ? (
+        {statusLine && !lm.isDownloading ? (
           <Text style={styles.statusText}>{statusLine}</Text>
         ) : null}
         {transcript ? (
@@ -920,34 +798,6 @@ function ReviewScreen({
           <ShareIcon color="#fff" size={24} />
         </Pressable>
       </View>
-
-      <Modal
-        visible={showRaceInfo}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setShowRaceInfo(false)}
-      >
-        <Pressable
-          style={styles.raceInfoBackdrop}
-          onPress={() => setShowRaceInfo(false)}
-        >
-          <Pressable style={styles.raceInfoCard} onPress={() => {}}>
-            <Text style={styles.raceInfoTitle}>Why two bars?</Text>
-            <Text style={styles.raceInfoBody}>
-              The 4.68 GB Gemma 4 E2B Core ML weights live on both HuggingFace and our Cloudflare R2 CDN. The app runs a preflight race: fetch 200 MB from each source in parallel. Whichever finishes first wins — the full model download then uses the winner's URL.
-            </Text>
-            <Text style={styles.raceInfoBody}>
-              HF rate-limits anonymous downloads, so R2 usually wins. But if it doesn't, we fall back to HF automatically.
-            </Text>
-            <Pressable
-              onPress={() => setShowRaceInfo(false)}
-              style={styles.raceInfoDismiss}
-            >
-              <Text style={styles.raceInfoDismissText}>Got it</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
 
       <Modal
         visible={showDebug}
@@ -1393,6 +1243,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: 'rgba(255,255,255,0.08)',
     overflow: 'hidden',
+    alignSelf: 'stretch',
   },
   raceBarFill: {
     height: '100%',

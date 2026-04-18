@@ -32,7 +32,16 @@ Free-tier ngrok gives a new subdomain each restart, so update step 3 each sessio
 
 1. **Admit int4-only models.** Upstream excludes any model that doesn't publish *both* int4 and int8 weights. Several Gemma 4 variants (incl. `gemma-4-e2b-it`, `gemma-4-e4b-it`, `gemma-3n-e2b-it`) ship only int4, so they never land in the registry and `lm.download()` throws "model … with specified options not found" even with `quantization: 'int4'` set. The patch lets a model in if it has *either* quant, and only builds the entry that actually exists.
 2. **Bump `RUNTIME_VERSION` to `1.14.0`.** The `int4-apple` variant of `gemma-4-e2b-it` (the one with the Core ML `.mlpackage` files needed for Neural Engine inference) only exists at HF tag `v1.14`. Upstream pins to `v1.13`, which 404s.
-3. **Route the `gemma-4-e2b-it` apple zip through our Cloudflare R2 CDN** instead of HF. HF's Xet-bridge rate-limits anonymous download bandwidth, and the 4.68 GB Core ML zip is exactly the worst-case download. Hosted at `https://pub-59f20910ffb24ac4a79e942aec001bbb.r2.dev/gemma-4-e2b-it-int4-apple.zip`.
+3. **Expose `setModelUrlOverride(slug, { proApple, url })`** so app code can route a specific model's download through a private CDN (e.g. self-hosted S3/R2) without rebuilding the patch. The mechanism ships empty by default — HF URLs resolve normally.
+
+   **R2 example (disabled by default, opt in from app startup):** we've mirrored the 4.68 GB `gemma-4-e2b-it-int4-apple.zip` to Cloudflare R2 at `https://pub-59f20910ffb24ac4a79e942aec001bbb.r2.dev/gemma-4-e2b-it-int4-apple.zip`. To use it, call from your app once before the model downloads:
+   ```ts
+   import { setModelUrlOverride } from 'cactus-react-native';
+   setModelUrlOverride('gemma-4-e2b-it', {
+     proApple: 'https://pub-59f20910ffb24ac4a79e942aec001bbb.r2.dev/gemma-4-e2b-it-int4-apple.zip',
+   });
+   ```
+   In practice we saw HF win most of the time from the hackathon venue, so we left HF as the default. The R2 path is kept as a rate-limit escape hatch and reference for anyone shipping Cactus to production (Cactus's team confirmed clients usually want their own CDN for these reasons).
 
 Regenerate the patch after cactus upgrades:
 

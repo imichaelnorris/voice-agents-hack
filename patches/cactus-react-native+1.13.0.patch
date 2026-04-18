@@ -13,23 +13,21 @@ index 9e72096..1c15d98 100644
  //# sourceMappingURL=index.js.map
 \ No newline at end of file
 diff --git a/node_modules/cactus-react-native/lib/module/modelRegistry.js b/node_modules/cactus-react-native/lib/module/modelRegistry.js
-index ab63dd5..3a6c143 100644
+index ab63dd5..564476d 100644
 --- a/node_modules/cactus-react-native/lib/module/modelRegistry.js
 +++ b/node_modules/cactus-react-native/lib/module/modelRegistry.js
-@@ -1,7 +1,19 @@
+@@ -1,7 +1,17 @@
  "use strict";
  
 -const RUNTIME_VERSION = '1.13.0';
 +const RUNTIME_VERSION = '1.14.0';
  let registryPromise = null;
 +// Runtime-settable URL overrides, keyed by model slug. App code can swap
-+// download endpoints (e.g. after a preflight CDN race) without rebuilding.
++// download endpoints (e.g. to a private CDN) by calling setModelUrlOverride
++// before the download fires. Leave empty by default so the upstream HF URLs
++// resolve normally — see HACKATHON.md for the R2 example we documented.
 +//   urlOverrides[slug] = { proApple?: string, url?: string }
-+const urlOverrides = {
-+  'gemma-4-e2b-it': {
-+    proApple: 'https://pub-59f20910ffb24ac4a79e942aec001bbb.r2.dev/gemma-4-e2b-it-int4-apple.zip',
-+  },
-+};
++const urlOverrides = {};
 +export function setModelUrlOverride(slug, override) {
 +  urlOverrides[slug] = { ...(urlOverrides[slug] ?? {}), ...override };
 +  registryPromise = null;
@@ -37,7 +35,7 @@ index ab63dd5..3a6c143 100644
  export function getRegistry() {
    return registryPromise ??= fetchRegistry();
  }
-@@ -43,38 +55,57 @@ async function fetchRegistry() {
+@@ -43,38 +53,57 @@ async function fetchRegistry() {
      tags = []
    }) => {
      const weights = siblings.map(s => s.rfilename).filter(f => f.startsWith('weights/') && f.endsWith('.zip'));
@@ -132,10 +130,10 @@ index adb0a03..6e96e1b 100644
  // Types
  export type { CactusModel, CactusModelOptions } from './types/common';
 diff --git a/node_modules/cactus-react-native/src/modelRegistry.ts b/node_modules/cactus-react-native/src/modelRegistry.ts
-index 02197f8..5dc34ab 100644
+index 02197f8..d5e10e4 100644
 --- a/node_modules/cactus-react-native/src/modelRegistry.ts
 +++ b/node_modules/cactus-react-native/src/modelRegistry.ts
-@@ -1,9 +1,23 @@
+@@ -1,9 +1,21 @@
  import type { CactusModel } from './types/common';
  
 -const RUNTIME_VERSION = '1.13.0';
@@ -144,13 +142,11 @@ index 02197f8..5dc34ab 100644
  let registryPromise: Promise<{ [key: string]: CactusModel }> | null = null;
  
 +// Runtime-settable URL overrides, keyed by model slug. App code can swap
-+// download endpoints (e.g. after a preflight CDN race) without rebuilding.
++// download endpoints (e.g. to a private CDN) by calling setModelUrlOverride
++// before the download fires. Leave empty by default so the upstream HF URLs
++// resolve normally — see HACKATHON.md for the R2 example we documented.
 +type UrlOverride = { proApple?: string; url?: string };
-+const urlOverrides: { [slug: string]: UrlOverride } = {
-+  'gemma-4-e2b-it': {
-+    proApple: 'https://pub-59f20910ffb24ac4a79e942aec001bbb.r2.dev/gemma-4-e2b-it-int4-apple.zip',
-+  },
-+};
++const urlOverrides: { [slug: string]: UrlOverride } = {};
 +
 +export function setModelUrlOverride(slug: string, override: UrlOverride): void {
 +  urlOverrides[slug] = { ...(urlOverrides[slug] ?? {}), ...override };
@@ -160,7 +156,7 @@ index 02197f8..5dc34ab 100644
  export function getRegistry(): Promise<{ [key: string]: CactusModel }> {
    return (registryPromise ??= fetchRegistry());
  }
-@@ -64,19 +78,19 @@ async function fetchRegistry(): Promise<{ [key: string]: CactusModel }> {
+@@ -64,19 +76,19 @@ async function fetchRegistry(): Promise<{ [key: string]: CactusModel }> {
          .map((s: any) => s.rfilename as string)
          .filter((f) => f.startsWith('weights/') && f.endsWith('.zip'));
  
@@ -188,7 +184,7 @@ index 02197f8..5dc34ab 100644
  
        const base = `https://huggingface.co/${id}/resolve/${version}/weights/${key}`;
  
-@@ -94,28 +108,46 @@ async function fetchRegistry(): Promise<{ [key: string]: CactusModel }> {
+@@ -94,28 +106,46 @@ async function fetchRegistry(): Promise<{ [key: string]: CactusModel }> {
              (1024 * 1024)
          );
  

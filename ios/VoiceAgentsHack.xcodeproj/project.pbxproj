@@ -191,9 +191,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-VoiceAgentsHack/Pods-VoiceAgentsHack-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-VoiceAgentsHack/Pods-VoiceAgentsHack-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -230,9 +234,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-VoiceAgentsHack/Pods-VoiceAgentsHack-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-VoiceAgentsHack/Pods-VoiceAgentsHack-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -263,6 +271,7 @@
 				DEVELOPMENT_TEAM = 9JHGP4UF38;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = VoiceAgentsHack/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DeepShades;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -293,6 +302,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 9JHGP4UF38;
 				INFOPLIST_FILE = VoiceAgentsHack/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DeepShades;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
