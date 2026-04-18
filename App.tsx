@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   PermissionsAndroid,
   Platform,
   Pressable,
@@ -11,6 +12,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   View,
   useColorScheme,
 } from 'react-native';
@@ -136,6 +138,67 @@ function ShareIcon({ color = '#fff', size = 24 }: { color?: string; size?: numbe
   );
 }
 
+function DebugIcon({ color = '#fff', size = 22 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M9 5l1.2 1.6h3.6L15 5"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M8 11a4 4 0 0 1 8 0v4a4 4 0 0 1-8 0v-4z"
+        stroke={color}
+        strokeWidth={1.8}
+      />
+      <Path
+        d="M4 11h4M16 11h4M4 19h4M16 19h4M4 15h4M16 15h4"
+        stroke={color}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+function BackIcon({ color = '#fff', size = 24 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M15 5l-7 7 7 7"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function CopyIcon({ color = '#fff', size = 22 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect
+        x={8}
+        y={8}
+        width={12}
+        height={12}
+        rx={2.5}
+        stroke={color}
+        strokeWidth={1.8}
+      />
+      <Path
+        d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
 function base64ToBytes(b64: string): number[] {
   const binary = global.atob(b64);
   const bytes = new Array<number>(binary.length);
@@ -156,7 +219,17 @@ async function ensureMicPermission(): Promise<boolean> {
   return granted === PermissionsAndroid.RESULTS.GRANTED;
 }
 
-type Screen = 'camera' | 'review';
+type Screen = 'camera' | 'review' | 'promptEval';
+
+const EVAL_WS_URL = 'wss://saggy-barbecue-lisp.ngrok-free.dev';
+
+const DEFAULT_SHADER_PROMPT = `Write a complete GLSL ES 1.00 fragment shader that produces an interesting animated image.
+
+Requirements:
+- Use "precision mediump float;" at the top.
+- Available uniforms: "uniform float u_time;" (seconds) and "uniform vec2 u_resolution;" (pixels).
+- Write to gl_FragColor.
+- Output only the shader source code — no markdown, no prose, no backticks.`;
 
 export default function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -183,12 +256,26 @@ function Root() {
   }, []);
 
   if (screen === 'camera') {
-    return <CameraScreen onPhoto={handlePhotoTaken} />;
+    return (
+      <CameraScreen
+        onPhoto={handlePhotoTaken}
+        onPromptEval={() => setScreen('promptEval')}
+      />
+    );
+  }
+  if (screen === 'promptEval') {
+    return <PromptEvalScreen onBack={() => setScreen('camera')} />;
   }
   return <ReviewScreen photoUri={photoUri} onDiscard={handleDiscard} />;
 }
 
-function CameraScreen({ onPhoto }: { onPhoto: (uri: string) => void }) {
+function CameraScreen({
+  onPhoto,
+  onPromptEval,
+}: {
+  onPhoto: (uri: string) => void;
+  onPromptEval: () => void;
+}) {
   const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState(false);
   const [position, setPosition] = useState<'back' | 'front'>('back');
@@ -267,6 +354,15 @@ function CameraScreen({ onPhoto }: { onPhoto: (uri: string) => void }) {
       </View>
 
       <View style={[styles.cameraBottomBar, { paddingBottom: insets.bottom + 24 }]}>
+        <View style={styles.cameraBottomSlot}>
+          <Pressable
+            onPress={onPromptEval}
+            style={styles.promptEvalButton}
+            hitSlop={8}
+          >
+            <Text style={styles.promptEvalButtonText}>{'Prompt\nEval'}</Text>
+          </Pressable>
+        </View>
         <Pressable
           onPress={handleTake}
           disabled={busy}
@@ -278,6 +374,7 @@ function CameraScreen({ onPhoto }: { onPhoto: (uri: string) => void }) {
             <View style={styles.shutterInner} />
           )}
         </Pressable>
+        <View style={styles.cameraBottomSlot} />
       </View>
     </View>
   );
@@ -300,6 +397,7 @@ function ReviewScreen({
   const [response, setResponse] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   const audioBuffer = useRef<number[]>([]);
   const dataSub = useRef<{ remove: () => void } | null>(null);
@@ -430,6 +528,19 @@ function ReviewScreen({
     }
   }, [photoUri]);
 
+  const handleCopyDebug = useCallback(async () => {
+    const text = response || '';
+    if (!text) {
+      Alert.alert('Nothing to copy', 'The model has not produced any output yet.');
+      return;
+    }
+    try {
+      await Share.share({ message: text });
+    } catch (err) {
+      Alert.alert('Share failed', err instanceof Error ? err.message : String(err));
+    }
+  }, [response]);
+
   const lmBusy = lm.isDownloading || !lm.isDownloaded;
   const sttBusy = stt.isDownloading || !stt.isDownloaded;
 
@@ -449,7 +560,7 @@ function ReviewScreen({
     ? 'Listening — tap mic to stop.'
     : transcript
     ? ''
-    : 'Tap the mic and ask Gemma about your photo.';
+    : 'Type or speak a prompt to generate a shader for this image.';
 
   const micDisabled = lmBusy || sttBusy || isGenerating || isFinalizing;
 
@@ -459,6 +570,14 @@ function ReviewScreen({
         <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
       ) : null}
       <View style={[StyleSheet.absoluteFill, styles.scrim]} />
+
+      <Pressable
+        onPress={() => setShowDebug(true)}
+        hitSlop={12}
+        style={[styles.debugButton, { top: insets.top + 12 }]}
+      >
+        <DebugIcon color="#fff" size={20} />
+      </Pressable>
 
       <ScrollView
         style={[styles.outputBox, { marginTop: insets.top + 12 }]}
@@ -509,6 +628,311 @@ function ReviewScreen({
           <ShareIcon color="#fff" size={24} />
         </Pressable>
       </View>
+
+      <Modal
+        visible={showDebug}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowDebug(false)}
+      >
+        <View style={styles.debugScreen}>
+          <View style={[styles.debugTopBar, { paddingTop: insets.top + 8 }]}>
+            <Pressable
+              onPress={() => setShowDebug(false)}
+              hitSlop={12}
+              style={styles.debugTopIcon}
+            >
+              <CloseIcon color="#fff" size={24} />
+            </Pressable>
+            <Text style={styles.debugTitle}>Model output</Text>
+            <Pressable
+              onPress={handleCopyDebug}
+              hitSlop={12}
+              style={styles.debugTopIcon}
+            >
+              <CopyIcon color="#fff" size={22} />
+            </Pressable>
+          </View>
+          <ScrollView
+            style={styles.debugBody}
+            contentContainerStyle={styles.debugBodyContent}
+          >
+            <Text selectable style={styles.debugText}>
+              {response || '(no output yet)'}
+            </Text>
+          </ScrollView>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+type EvalWsStatus = 'idle' | 'connecting' | 'connected' | 'error';
+
+type EvalLogEntry = {
+  id: string;
+  prompt: string;
+  response?: string;
+  error?: string;
+  ts: number;
+};
+
+type EvalInferenceMsg = {
+  type: 'inference';
+  id: string;
+  prompt: string;
+};
+
+function PromptEvalScreen({ onBack }: { onBack: () => void }) {
+  const insets = useSafeAreaInsets();
+  const lm = useCactusLM({ model: VISION_MODEL, options: VISION_MODEL_OPTIONS });
+
+  const [promptOverride, setPromptOverride] = useState('');
+  const [oneShotOutput, setOneShotOutput] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [wsStatus, setWsStatus] = useState<EvalWsStatus>('idle');
+  const [log, setLog] = useState<EvalLogEntry[]>([]);
+
+  const wsRef = useRef<WebSocket | null>(null);
+  const chainRef = useRef<Promise<void>>(Promise.resolve());
+  const lmAttempted = useRef(false);
+  const lmRef = useRef(lm);
+  useEffect(() => {
+    lmRef.current = lm;
+  }, [lm]);
+
+  useEffect(() => {
+    if (!lm.isDownloaded && !lm.isDownloading && !lmAttempted.current) {
+      lmAttempted.current = true;
+      lm.download().catch(e => setError(`LM download: ${String(e)}`));
+    }
+  }, [lm.isDownloaded, lm.isDownloading, lm.download]);
+
+  useEffect(() => {
+    return () => {
+      wsRef.current?.close();
+      wsRef.current = null;
+    };
+  }, []);
+
+  const runInference = useCallback(async (prompt: string): Promise<string> => {
+    let response = '';
+    await lmRef.current.complete({
+      messages: [{ role: 'user', content: prompt }],
+      options: { maxTokens: 1024, temperature: 0.7 },
+      onToken: (token: string) => {
+        response += token;
+      },
+    });
+    return response;
+  }, []);
+
+  const handleOneShot = useCallback(async () => {
+    if (isGenerating || !lm.isDownloaded) return;
+    const prompt = promptOverride.trim() || DEFAULT_SHADER_PROMPT;
+    setIsGenerating(true);
+    setOneShotOutput('');
+    setError(null);
+    try {
+      await lm.complete({
+        messages: [{ role: 'user', content: prompt }],
+        options: { maxTokens: 1024, temperature: 0.7 },
+        onToken: (token: string) => {
+          setOneShotOutput(prev => prev + token);
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [isGenerating, lm, promptOverride]);
+
+  const handleInferenceRequest = useCallback(
+    async (req: EvalInferenceMsg) => {
+      const ws = wsRef.current;
+      try {
+        const response = await runInference(req.prompt);
+        ws?.send(
+          JSON.stringify({ type: 'response', id: req.id, response }),
+        );
+        setLog(prev =>
+          [
+            { id: req.id, prompt: req.prompt, response, ts: Date.now() },
+            ...prev,
+          ].slice(0, 50),
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        ws?.send(
+          JSON.stringify({ type: 'error', id: req.id, error: message }),
+        );
+        setLog(prev =>
+          [
+            { id: req.id, prompt: req.prompt, error: message, ts: Date.now() },
+            ...prev,
+          ].slice(0, 50),
+        );
+      }
+    },
+    [runInference],
+  );
+
+  const connectClient = useCallback(() => {
+    if (wsRef.current) return;
+    setError(null);
+    setWsStatus('connecting');
+    const ws = new WebSocket(EVAL_WS_URL);
+    wsRef.current = ws;
+    ws.onopen = () => {
+      setWsStatus('connected');
+      try {
+        ws.send(JSON.stringify({ type: 'hello', model: VISION_MODEL }));
+      } catch {}
+    };
+    ws.onmessage = evt => {
+      try {
+        const data = typeof evt.data === 'string' ? evt.data : '';
+        const msg = JSON.parse(data);
+        if (msg && msg.type === 'inference' && typeof msg.id === 'string' && typeof msg.prompt === 'string') {
+          chainRef.current = chainRef.current.then(() =>
+            handleInferenceRequest(msg as EvalInferenceMsg),
+          );
+        }
+      } catch (err) {
+        setError(`Parse error: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    };
+    ws.onerror = () => {
+      setWsStatus('error');
+      setError('WebSocket error');
+    };
+    ws.onclose = () => {
+      wsRef.current = null;
+      setWsStatus(prev => (prev === 'error' ? 'error' : 'idle'));
+    };
+  }, [handleInferenceRequest]);
+
+  const disconnectClient = useCallback(() => {
+    wsRef.current?.close();
+    wsRef.current = null;
+    setWsStatus('idle');
+  }, []);
+
+  const clientActive = wsStatus === 'connected' || wsStatus === 'connecting';
+
+  const lmStatusLine = lm.isDownloading
+    ? `Downloading Gemma 4 E2B… ${Math.round((lm.downloadProgress ?? 0) * 100)}%`
+    : !lm.isDownloaded
+    ? 'Preparing Gemma 4 E2B…'
+    : null;
+
+  const oneShotDisabled = !lm.isDownloaded || isGenerating;
+
+  return (
+    <View style={styles.screen}>
+      <View style={[styles.evalTopBar, { paddingTop: insets.top + 8 }]}>
+        <Pressable onPress={onBack} style={styles.debugTopIcon} hitSlop={12}>
+          <BackIcon color="#fff" size={22} />
+        </Pressable>
+        <Text style={styles.debugTitle}>Prompt Eval</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
+      <ScrollView
+        style={styles.evalBody}
+        contentContainerStyle={styles.evalBodyContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {lmStatusLine ? (
+          <Text style={styles.statusText}>{lmStatusLine}</Text>
+        ) : null}
+
+        <Text style={styles.evalSectionLabel}>Produce shader example</Text>
+        <TextInput
+          style={styles.evalInput}
+          placeholder="Optional override (leave empty to use default shader prompt)"
+          placeholderTextColor="#6b7280"
+          value={promptOverride}
+          onChangeText={setPromptOverride}
+          multiline
+          editable={!isGenerating}
+        />
+        <Pressable
+          onPress={handleOneShot}
+          disabled={oneShotDisabled}
+          style={[
+            styles.evalPrimaryButton,
+            oneShotDisabled && styles.evalButtonDisabled,
+          ]}
+        >
+          {isGenerating ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.evalPrimaryButtonText}>Produce shader example</Text>
+          )}
+        </Pressable>
+        {oneShotOutput ? (
+          <View style={styles.evalOutputBox}>
+            <Text selectable style={styles.evalOutputText}>
+              {oneShotOutput}
+              {isGenerating ? <Text style={styles.cursor}>▍</Text> : null}
+            </Text>
+          </View>
+        ) : null}
+
+        <View style={styles.evalDivider} />
+
+        <Text style={styles.evalSectionLabel}>Client mode</Text>
+        <Text style={styles.evalCaption}>
+          Receives inference requests for batch evals
+        </Text>
+        <Pressable
+          onPress={clientActive ? disconnectClient : connectClient}
+          disabled={!lm.isDownloaded}
+          style={[
+            clientActive ? styles.evalDangerButton : styles.evalPrimaryButton,
+            !lm.isDownloaded && styles.evalButtonDisabled,
+          ]}
+        >
+          <Text style={styles.evalPrimaryButtonText}>
+            {wsStatus === 'connecting'
+              ? 'Connecting… tap to cancel'
+              : wsStatus === 'connected'
+              ? 'Disconnect client'
+              : 'Start client mode'}
+          </Text>
+        </Pressable>
+        <Text style={styles.evalStatusText}>
+          Status: {wsStatus}
+          {wsStatus === 'connected' ? `  —  ${EVAL_WS_URL}` : ''}
+        </Text>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        {log.length > 0 ? (
+          <View style={styles.evalLogBox}>
+            <Text style={styles.evalSectionLabel}>Recent requests</Text>
+            {log.map(entry => (
+              <View key={`${entry.id}-${entry.ts}`} style={styles.evalLogRow}>
+                <Text style={styles.evalLogPrompt} numberOfLines={2}>
+                  #{entry.id.slice(0, 8)} · {entry.prompt}
+                </Text>
+                {entry.error ? (
+                  <Text style={styles.errorText} numberOfLines={3}>
+                    {entry.error}
+                  </Text>
+                ) : (
+                  <Text style={styles.evalLogResponse} numberOfLines={3}>
+                    {entry.response}
+                  </Text>
+                )}
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </ScrollView>
     </View>
   );
 }
@@ -547,8 +971,29 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    flexDirection: 'row',
     alignItems: 'center',
     paddingTop: 16,
+    paddingHorizontal: 24,
+  },
+  cameraBottomSlot: { flex: 1, alignItems: 'center' },
+  promptEvalButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(15,17,20,0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  promptEvalButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 16,
   },
   shutter: {
     width: 88,
@@ -575,7 +1020,7 @@ const styles = StyleSheet.create({
   outputBox: {
     position: 'absolute',
     left: 16,
-    right: 16,
+    right: 64,
     top: 0,
     maxHeight: '55%',
     backgroundColor: 'rgba(15,17,20,0.82)',
@@ -628,4 +1073,140 @@ const styles = StyleSheet.create({
   },
   micButtonRecording: { backgroundColor: '#ef4444' },
   micButtonDisabled: { opacity: 0.5 },
+
+  debugButton: {
+    position: 'absolute',
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(15,17,20,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+
+  debugScreen: { flex: 1, backgroundColor: '#0f1114' },
+  debugTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  debugTopIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  debugTitle: { color: '#f5f7fa', fontSize: 16, fontWeight: '700' },
+  debugBody: { flex: 1 },
+  debugBodyContent: { padding: 16, paddingBottom: 48 },
+  debugText: {
+    color: '#e5e7eb',
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+    fontSize: 13,
+    lineHeight: 20,
+  },
+
+  evalTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  evalBody: { flex: 1 },
+  evalBodyContent: { padding: 16, paddingBottom: 48, gap: 12 },
+  evalSectionLabel: {
+    color: '#f5f7fa',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  evalCaption: {
+    color: '#9ba1a6',
+    fontSize: 13,
+    marginTop: -6,
+  },
+  evalInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 12,
+    padding: 12,
+    color: '#f5f7fa',
+    fontSize: 14,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  evalPrimaryButton: {
+    backgroundColor: '#3b82f6',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  evalDangerButton: {
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  evalPrimaryButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  evalButtonDisabled: { opacity: 0.5 },
+  evalOutputBox: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
+    padding: 12,
+  },
+  evalOutputText: {
+    color: '#e5e7eb',
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  evalDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginVertical: 8,
+  },
+  evalStatusText: {
+    color: '#9ba1a6',
+    fontSize: 12,
+  },
+  evalLogBox: {
+    marginTop: 8,
+    gap: 8,
+  },
+  evalLogRow: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 10,
+    padding: 10,
+    gap: 4,
+  },
+  evalLogPrompt: { color: '#a78bfa', fontSize: 12, fontWeight: '700' },
+  evalLogResponse: {
+    color: '#e5e7eb',
+    fontSize: 12,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+    lineHeight: 17,
+  },
 });
