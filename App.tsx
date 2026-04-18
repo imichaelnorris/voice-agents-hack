@@ -39,6 +39,16 @@ const VISION_MODEL_OPTIONS = { quantization: 'int4' as const, pro: false };
 const STT_MODEL = 'whisper-small';
 const STT_MODEL_OPTIONS = { quantization: 'int8' as const, pro: false };
 
+// Mirrors the round-1 eval prompts in SHADER_PROMPT_ANALYSIS.md so tapping a chip
+// on the phone produces a directly comparable output to the Ollama baseline.
+const EXAMPLE_PROMPTS: { label: string; prompt: string }[] = [
+  { label: 'Invert', prompt: 'invert the colors' },
+  { label: 'CRT', prompt: 'add a CRT scanline effect' },
+  { label: 'Underwater', prompt: 'make it look like an underwater scene with caustics' },
+  { label: 'Vignette', prompt: 'apply a vignette that darkens the edges' },
+  { label: 'Neon', prompt: 'turn it into a neon glow' },
+];
+
 // 16kHz 16-bit mono PCM, matches Whisper's expected format.
 const AUDIO_OPTS = {
   sampleRate: 16000,
@@ -519,6 +529,17 @@ function ReviewScreen({
     }
   }, [isRecording, isGenerating, isFinalizing, startRecording, stopRecordingAndAsk]);
 
+  const handleExamplePrompt = useCallback(
+    (prompt: string) => {
+      if (isGenerating || isFinalizing || isRecording) return;
+      setError(null);
+      setTranscript(prompt);
+      setResponse('');
+      askGemma(prompt);
+    },
+    [askGemma, isGenerating, isFinalizing, isRecording],
+  );
+
   const handleShare = useCallback(async () => {
     if (!photoUri) return;
     try {
@@ -598,6 +619,28 @@ function ReviewScreen({
           </Text>
         ) : null}
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      </ScrollView>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={[styles.chipRow, { bottom: insets.bottom + 140 }]}
+        contentContainerStyle={styles.chipRowContent}
+      >
+        {EXAMPLE_PROMPTS.map(ex => (
+          <Pressable
+            key={ex.label}
+            onPress={() => handleExamplePrompt(ex.prompt)}
+            disabled={micDisabled || isRecording}
+            style={[
+              styles.chip,
+              (micDisabled || isRecording) && styles.chipDisabled,
+            ]}
+            hitSlop={6}
+          >
+            <Text style={styles.chipText}>{ex.label}</Text>
+          </Pressable>
+        ))}
       </ScrollView>
 
       <View style={[styles.bottomRow, { paddingBottom: insets.bottom + 20 }]}>
@@ -1040,6 +1083,28 @@ const styles = StyleSheet.create({
   responseText: { color: '#f5f7fa', fontSize: 16, lineHeight: 23 },
   cursor: { color: '#34d399' },
   errorText: { color: '#f87171', fontSize: 13 },
+
+  chipRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    maxHeight: 48,
+  },
+  chipRowContent: {
+    paddingHorizontal: 20,
+    gap: 8,
+    alignItems: 'center',
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(15,17,20,0.75)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  chipDisabled: { opacity: 0.4 },
+  chipText: { color: '#f5f7fa', fontSize: 13, fontWeight: '600' },
 
   bottomRow: {
     position: 'absolute',
