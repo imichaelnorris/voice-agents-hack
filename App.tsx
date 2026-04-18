@@ -24,6 +24,7 @@ import {
   Camera,
   useCameraDevice,
   useCameraPermission,
+  usePhotoOutput,
 } from 'react-native-vision-camera';
 import {
   useCactusLM,
@@ -31,10 +32,10 @@ import {
   type CactusLMMessage,
 } from 'cactus-react-native';
 
-// Gemma 4 E2B: on-device multimodal (vision + audio + text).
-// Cactus serves it from Cactus-Compute/gemma-4-E2B-it on HuggingFace.
-const VISION_MODEL = 'gemma-4-E2B-it';
+const VISION_MODEL = 'gemma-4-e2b-it';
+const VISION_MODEL_OPTIONS = { quantization: 'int4' as const, pro: false };
 const STT_MODEL = 'whisper-small';
+const STT_MODEL_OPTIONS = { quantization: 'int8' as const, pro: false };
 
 // 16kHz 16-bit mono PCM, matches Whisper's expected format.
 const AUDIO_OPTS = {
@@ -82,6 +83,34 @@ function CloseIcon({ color = '#fff', size = 24 }: { color?: string; size?: numbe
         stroke={color}
         strokeWidth={2.2}
         strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+function FlipCameraIcon({ color = '#fff', size = 22 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 8.5V8a2 2 0 0 1 2-2h2l1.5-2h5L16 6h2a2 2 0 0 1 2 2v1"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M20 15.5V16a2 2 0 0 1-2 2h-2l-1.5 2h-5L8 18H6a2 2 0 0 1-2-2v-1"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M7 10l-3 1 1-3M17 14l3-1-1 3"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </Svg>
   );
@@ -163,29 +192,29 @@ function CameraScreen({ onPhoto }: { onPhoto: (uri: string) => void }) {
   const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState(false);
   const [position, setPosition] = useState<'back' | 'front'>('back');
-  const cameraRef = useRef<Camera>(null);
   const device = useCameraDevice(position);
   const { hasPermission, requestPermission } = useCameraPermission();
+  const photoOutput = usePhotoOutput();
 
   useEffect(() => {
     if (!hasPermission) requestPermission();
   }, [hasPermission, requestPermission]);
 
   const handleTake = useCallback(async () => {
-    if (busy || !cameraRef.current) return;
+    if (busy) return;
     setBusy(true);
     try {
-      const photo = await cameraRef.current.takePhoto({
-        flash: 'off',
-        enableShutterSound: true,
-      });
-      if (!photo?.path) {
+      const photoFile = await photoOutput.capturePhotoToFile(
+        { flashMode: 'off', enableShutterSound: true },
+        {},
+      );
+      if (!photoFile?.filePath) {
         Alert.alert('Camera', 'No photo returned');
         return;
       }
-      const uri = photo.path.startsWith('file://')
-        ? photo.path
-        : `file://${photo.path}`;
+      const uri = photoFile.filePath.startsWith('file://')
+        ? photoFile.filePath
+        : `file://${photoFile.filePath}`;
       onPhoto(uri);
     } catch (err) {
       Alert.alert(
@@ -195,7 +224,7 @@ function CameraScreen({ onPhoto }: { onPhoto: (uri: string) => void }) {
     } finally {
       setBusy(false);
     }
-  }, [busy, onPhoto]);
+  }, [busy, onPhoto, photoOutput]);
 
   if (!hasPermission) {
     return (
@@ -220,21 +249,20 @@ function CameraScreen({ onPhoto }: { onPhoto: (uri: string) => void }) {
   return (
     <View style={styles.screen}>
       <Camera
-        ref={cameraRef}
         style={StyleSheet.absoluteFill}
         device={device}
         isActive={true}
-        photo={true}
+        outputs={[photoOutput]}
       />
 
       <View style={[styles.cameraTopBar, { paddingTop: insets.top + 8 }]}>
         <View style={{ flex: 1 }} />
         <Pressable
           onPress={() => setPosition(p => (p === 'back' ? 'front' : 'back'))}
-          style={styles.pill}
+          style={styles.flipButton}
           hitSlop={12}
         >
-          <Text style={styles.pillText}>Flip</Text>
+          <FlipCameraIcon color="#fff" size={22} />
         </Pressable>
       </View>
 
@@ -263,8 +291,8 @@ function ReviewScreen({
   onDiscard: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const lm = useCactusLM({ model: VISION_MODEL });
-  const stt = useCactusSTT({ model: STT_MODEL });
+  const lm = useCactusLM({ model: VISION_MODEL, options: VISION_MODEL_OPTIONS });
+  const stt = useCactusSTT({ model: STT_MODEL, options: STT_MODEL_OPTIONS });
 
   const [isRecording, setIsRecording] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
@@ -280,14 +308,22 @@ function ReviewScreen({
     AudioRecord.init(AUDIO_OPTS);
   }, []);
 
+  const lmAttempted = useRef(false);
+  const sttAttempted = useRef(false);
+
   useEffect(() => {
-    if (!lm.isDownloaded && !lm.isDownloading) {
+    if (!lm.isDownloaded && !lm.isDownloading && !lmAttempted.current) {
+      lmAttempted.current = true;
       lm.download().catch(e => setError(`LM download: ${String(e)}`));
     }
-    if (!stt.isDownloaded && !stt.isDownloading) {
+  }, [lm.isDownloaded, lm.isDownloading, lm.download]);
+
+  useEffect(() => {
+    if (!stt.isDownloaded && !stt.isDownloading && !sttAttempted.current) {
+      sttAttempted.current = true;
       stt.download().catch(e => setError(`STT download: ${String(e)}`));
     }
-  }, [lm, stt]);
+  }, [stt.isDownloaded, stt.isDownloading, stt.download]);
 
   useEffect(() => {
     return () => {
@@ -497,13 +533,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
-  pill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  flipButton: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
     backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  pillText: { color: '#fff', fontWeight: '600' },
 
   cameraBottomBar: {
     position: 'absolute',
