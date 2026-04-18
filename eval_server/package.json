@@ -1,0 +1,12 @@
+{
+  "name": "eval-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "tunnel": "cloudflared tunnel --url http://localhost:9000"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

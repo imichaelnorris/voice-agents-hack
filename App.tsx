@@ -305,7 +305,10 @@ async function ensureMicPermission(): Promise<boolean> {
 
 type Screen = 'camera' | 'review' | 'promptEval';
 
-const EVAL_WS_URL = 'wss://saggy-barbecue-lisp.ngrok-free.dev';
+// Cloudflared quick tunnel pointing at eval_server/server.mjs (localhost:9000).
+// Quick-tunnel URLs rotate every restart — update this string and rebuild
+// the app when the tunnel is restarted.
+const EVAL_WS_URL = 'wss://asus-too-aggregate-reported.trycloudflare.com';
 
 const DEFAULT_SHADER_PROMPT = `Write a complete GLSL ES 1.00 fragment shader that produces an interesting animated image.
 
@@ -325,9 +328,35 @@ export default function App() {
   );
 }
 
+type LmHook = ReturnType<typeof useCactusLM>;
+type SttHook = ReturnType<typeof useCactusSTT>;
+
 function Root() {
   const [screen, setScreen] = useState<Screen>('camera');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+
+  // Held at the top level so download state survives navigation between
+  // screens. When this was inside ReviewScreen the hook re-instantiated on
+  // every mount and restarted the download from zero.
+  const lm = useCactusLM({ model: VISION_MODEL, options: VISION_MODEL_OPTIONS });
+  const stt = useCactusSTT({ model: STT_MODEL, options: STT_MODEL_OPTIONS });
+
+  const lmAttempted = useRef(false);
+  const sttAttempted = useRef(false);
+
+  useEffect(() => {
+    if (!lm.isDownloaded && !lm.isDownloading && !lmAttempted.current) {
+      lmAttempted.current = true;
+      lm.download().catch(() => {});
+    }
+  }, [lm.isDownloaded, lm.isDownloading, lm.download]);
+
+  useEffect(() => {
+    if (!stt.isDownloaded && !stt.isDownloading && !sttAttempted.current) {
+      sttAttempted.current = true;
+      stt.download().catch(() => {});
+    }
+  }, [stt.isDownloaded, stt.isDownloading, stt.download]);
 
   const handlePhotoTaken = useCallback((uri: string) => {
     setPhotoUri(uri);
@@ -348,9 +377,9 @@ function Root() {
     );
   }
   if (screen === 'promptEval') {
-    return <PromptEvalScreen onBack={() => setScreen('camera')} />;
+    return <PromptEvalScreen onBack={() => setScreen('camera')} lm={lm} />;
   }
-  return <ReviewScreen photoUri={photoUri} onDiscard={handleDiscard} />;
+  return <ReviewScreen photoUri={photoUri} onDiscard={handleDiscard} lm={lm} stt={stt} />;
 }
 
 function CameraScreen({
@@ -467,13 +496,15 @@ function CameraScreen({
 function ReviewScreen({
   photoUri,
   onDiscard,
+  lm,
+  stt,
 }: {
   photoUri: string | null;
   onDiscard: () => void;
+  lm: LmHook;
+  stt: SttHook;
 }) {
   const insets = useSafeAreaInsets();
-  const lm = useCactusLM({ model: VISION_MODEL, options: VISION_MODEL_OPTIONS });
-  const stt = useCactusSTT({ model: STT_MODEL, options: STT_MODEL_OPTIONS });
 
   const [isRecording, setIsRecording] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
@@ -483,8 +514,12 @@ function ReviewScreen({
   const [error, setError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState(false);
   const [typed, setTyped] = useState('');
-  const [downloadStartMs, setDownloadStartMs] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
+  const [downloadStartMs, setDownloadStartMs] = useState<number | null>(null);
+  useEffect(() => {
+    if (lm.isDownloading && downloadStartMs == null) setDownloadStartMs(Date.now());
+    if (!lm.isDownloading && lm.isDownloaded) setDownloadStartMs(null);
+  }, [lm.isDownloading, lm.isDownloaded, downloadStartMs]);
   // Set when a chip with a canned shader is tapped. Skips Gemma; flows
   // straight into ShaderWebView. Cleared whenever the user uses voice or
   // text input so generation reclaims the screen.
@@ -497,17 +532,6 @@ function ReviewScreen({
     AudioRecord.init(AUDIO_OPTS);
   }, []);
 
-  const lmAttempted = useRef(false);
-  const sttAttempted = useRef(false);
-
-  useEffect(() => {
-    if (!lm.isDownloaded && !lm.isDownloading && !lmAttempted.current) {
-      lmAttempted.current = true;
-      setDownloadStartMs(Date.now());
-      lm.download().catch(e => setError(`LM download: ${String(e)}`));
-    }
-  }, [lm.isDownloaded, lm.isDownloading, lm.download]);
-
   // Tick once per second while the LM is downloading so the elapsed-time
   // readout on the status line actually moves.
   useEffect(() => {
@@ -515,13 +539,6 @@ function ReviewScreen({
     const id = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(id);
   }, [lm.isDownloading]);
-
-  useEffect(() => {
-    if (!stt.isDownloaded && !stt.isDownloading && !sttAttempted.current) {
-      sttAttempted.current = true;
-      stt.download().catch(e => setError(`STT download: ${String(e)}`));
-    }
-  }, [stt.isDownloaded, stt.isDownloading, stt.download]);
 
   useEffect(() => {
     return () => {
@@ -900,11 +917,18 @@ type EvalInferenceMsg = {
   type: 'inference';
   id: string;
   prompt: string;
+  // Optional system message — lets the eval server iterate on the system
+  // prompt across runs without reshipping the app.
+  systemPrompt?: string;
+  // Per-request inference options (override the defaults below).
+  options?: {
+    maxTokens?: number;
+    temperature?: number;
+  };
 };
 
-function PromptEvalScreen({ onBack }: { onBack: () => void }) {
+function PromptEvalScreen({ onBack, lm }: { onBack: () => void; lm: LmHook }) {
   const insets = useSafeAreaInsets();
-  const lm = useCactusLM({ model: VISION_MODEL, options: VISION_MODEL_OPTIONS });
 
   const [promptOverride, setPromptOverride] = useState('');
   const [oneShotOutput, setOneShotOutput] = useState('');
@@ -915,18 +939,10 @@ function PromptEvalScreen({ onBack }: { onBack: () => void }) {
 
   const wsRef = useRef<WebSocket | null>(null);
   const chainRef = useRef<Promise<void>>(Promise.resolve());
-  const lmAttempted = useRef(false);
   const lmRef = useRef(lm);
   useEffect(() => {
     lmRef.current = lm;
   }, [lm]);
-
-  useEffect(() => {
-    if (!lm.isDownloaded && !lm.isDownloading && !lmAttempted.current) {
-      lmAttempted.current = true;
-      lm.download().catch(e => setError(`LM download: ${String(e)}`));
-    }
-  }, [lm.isDownloaded, lm.isDownloading, lm.download]);
 
   useEffect(() => {
     return () => {
