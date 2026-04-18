@@ -48,3 +48,23 @@ Regenerate the patch after cactus upgrades:
 ```
 npx patch-package cactus-react-native
 ```
+
+### Native patch: background URLSession for model downloads
+
+`patches/cactus-react-native+1.13.0.patch` also touches Swift: `ios/HybridCactusFileSystem.swift`. Upstream creates the session with `URLSessionConfiguration.default` which is a foreground session — iOS suspends it when the user backgrounds the app, and after the suspension window the connection drops with `NSURLErrorTimedOut` (-1001).
+
+We swap in `URLSessionConfiguration.background(withIdentifier:)`. Background sessions keep running while the app is suspended and have iOS hand off completion events to us when we return. The continuation/await pattern in `DownloadProgressDelegate` continues to work because iOS resumes delivery of delegate callbacks to our live process when it reactivates (for the common "switched away briefly" case).
+
+Limitations we are not handling yet:
+
+- If iOS fully terminates the app (rare for 4.68 GB downloads, but possible under memory pressure), the `CheckedContinuation` is gone. A future fix would persist the in-flight download info and re-attach when the app relaunches.
+- `sessionSendsLaunchEvents = false`: we don't wake the app in the background to finish the download. If the download completes while the user is away, iOS holds the completion until the app next comes to the foreground (fine for our UX).
+
+After touching the Swift side, re-run `pod install` in `ios/` — the native patch only takes effect once CocoaPods re-copies the Cactus source into `Pods/`.
+
+## TODO
+
+- **Upstream the background-URLSession fix** to `cactus-compute/cactus-react-native`. The current foreground session guarantees anyone shipping a production Cactus app runs into `NSURLErrorTimedOut` (-1001) the first time a user switches apps mid-download. Our patch is ~10 lines of Swift and is the kind of thing that belongs in the library rather than every downstream app's patches directory. File an issue + PR once the hackathon dust settles.
+- **Harden for app-kill during download.** Persist `{ model, url, session_identifier }` in `UserDefaults` when a download starts. On app launch, check for pending downloads and re-create the `URLSession` with the same identifier to re-attach to the system's in-flight task. Required for the "iOS killed the app under memory pressure during a 4.68 GB download" case; not needed for the typical suspend/resume.
+- **Stable background-session identifier.** We use `com.cactus.download.{model}.{uuid}` which is unique per invocation. Apple recommends reusing a single identifier per session role. Not a bug but leaks session configs to iOS over time.
+- **AppDelegate hook.** If we ever want iOS to launch the app in the background to deliver completion events (e.g. so `onProgress(1.0)` fires even when user never returns), we'd need to wire up `application(_:handleEventsForBackgroundURLSession:completionHandler:)` and set `sessionSendsLaunchEvents = true`.
