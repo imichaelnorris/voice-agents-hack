@@ -34,11 +34,11 @@ Free-tier ngrok gives a new subdomain each restart, so update step 3 each sessio
 2. **Bump `RUNTIME_VERSION` to `1.14.0`.** The `int4-apple` variant of `gemma-4-e2b-it` (the one with the Core ML `.mlpackage` files needed for Neural Engine inference) only exists at HF tag `v1.14`. Upstream pins to `v1.13`, which 404s.
 3. **Expose `setModelUrlOverride(slug, { proApple, url })`** so app code can route a specific model's download through a private CDN (e.g. self-hosted S3/R2) without rebuilding the patch. The mechanism ships empty by default — HF URLs resolve normally.
 
-   **R2 example (disabled by default, opt in from app startup):** we've mirrored the 4.68 GB `gemma-4-e2b-it-int4-apple.zip` to Cloudflare R2 at `https://pub-59f20910ffb24ac4a79e942aec001bbb.r2.dev/gemma-4-e2b-it-int4-apple.zip`. To use it, call from your app once before the model downloads:
+   **R2 example (disabled by default, opt in from app startup):** we've mirrored the 4.68 GB `gemma-4-e2b-it-int4-apple.zip` to Cloudflare R2 at `https://deepsteve.com/gemma-4-e2b-it-int4-apple.zip`. To use it, call from your app once before the model downloads:
    ```ts
    import { setModelUrlOverride } from 'cactus-react-native';
    setModelUrlOverride('gemma-4-e2b-it', {
-     proApple: 'https://pub-59f20910ffb24ac4a79e942aec001bbb.r2.dev/gemma-4-e2b-it-int4-apple.zip',
+     proApple: 'https://deepsteve.com/gemma-4-e2b-it-int4-apple.zip',
    });
    ```
    In practice we saw HF win most of the time from the hackathon venue, so we left HF as the default. The R2 path is kept as a rate-limit escape hatch and reference for anyone shipping Cactus to production (Cactus's team confirmed clients usually want their own CDN for these reasons).

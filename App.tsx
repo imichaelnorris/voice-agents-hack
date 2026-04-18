@@ -31,9 +31,22 @@ import {
 import {
   useCactusLM,
   useCactusSTT,
+  setModelUrlOverride,
   type CactusLMMessage,
 } from 'cactus-react-native';
+import * as RNFS from '@dr.pogodin/react-native-fs';
 import { ShaderWebView, extractShader } from './ShaderWebView';
+
+// Preflight CDN race: fetch 200 MB from HF and R2 in 10 MB chunks in parallel.
+// Chunked RNFS gives live progress between chunks — the only reliable way on
+// iOS (native progress events don't fire during a single large download, and
+// XHR blows JS's string-length limit at 200 MB).
+const RACE_CHUNK = 10 * 1024 * 1024;
+const RACE_CHUNKS = 20;
+const HF_APPLE_URL =
+  'https://huggingface.co/Cactus-Compute/gemma-4-E2B-it/resolve/v1.14/weights/gemma-4-e2b-it-int4-apple.zip';
+const R2_APPLE_URL =
+  'https://deepsteve.com/gemma-4-e2b-it-int4-apple.zip';
 
 const VISION_MODEL = 'gemma-4-e2b-it';
 
@@ -484,6 +497,12 @@ function ReviewScreen({
   const [typed, setTyped] = useState('');
   const [downloadStartMs, setDownloadStartMs] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
+  const [raceState, setRaceState] = useState<'idle' | 'running' | 'done' | 'skip'>('idle');
+  const [hfProgress, setHfProgress] = useState(0);
+  const [r2Progress, setR2Progress] = useState(0);
+  const [hfTimeMs, setHfTimeMs] = useState<number | null>(null);
+  const [r2TimeMs, setR2TimeMs] = useState<number | null>(null);
+  const [raceWinner, setRaceWinner] = useState<'hf' | 'r2' | null>(null);
 
   const audioBuffer = useRef<number[]>([]);
   const dataSub = useRef<{ remove: () => void } | null>(null);
@@ -494,14 +513,87 @@ function ReviewScreen({
 
   const lmAttempted = useRef(false);
   const sttAttempted = useRef(false);
+  const raceAttempted = useRef(false);
+
+  const isDownloadedRef = useRef(lm.isDownloaded);
+  useEffect(() => { isDownloadedRef.current = lm.isDownloaded; }, [lm.isDownloaded]);
+
+  // CDN race: 200 MB from each source, 10 MB chunks for live progress. First
+  // to finish wins and its URL is installed as the override for the real 4.68 GB
+  // download below.
+  useEffect(() => {
+    if (raceAttempted.current || lm.isDownloading) return;
+    raceAttempted.current = true;
+    (async () => {
+      await new Promise(r => setTimeout(r, 300));
+      if (isDownloadedRef.current) { setRaceState('skip'); return; }
+      setRaceState('running');
+
+      const hfAbort = { aborted: false };
+      const r2Abort = { aborted: false };
+      let winner: 'hf' | 'r2' | null = null;
+
+      const run = async (
+        url: string,
+        setProgress: (p: number) => void,
+        abort: { aborted: boolean },
+      ): Promise<number> => {
+        const dir = `${RNFS.CachesDirectoryPath}/race-${Math.random().toString(36).slice(2, 8)}`;
+        await RNFS.mkdir(dir).catch(() => {});
+        const started = Date.now();
+        try {
+          for (let i = 0; i < RACE_CHUNKS; i++) {
+            if (abort.aborted) throw new Error('aborted');
+            const startByte = i * RACE_CHUNK;
+            const endByte = startByte + RACE_CHUNK - 1;
+            await RNFS.downloadFile({
+              fromUrl: url,
+              toFile: `${dir}/c${i}`,
+              headers: { Range: `bytes=${startByte}-${endByte}` },
+            }).promise;
+            setProgress((i + 1) / RACE_CHUNKS);
+          }
+          return Date.now() - started;
+        } finally {
+          RNFS.unlink(dir).catch(() => {});
+        }
+      };
+
+      const declareWinner = (w: 'hf' | 'r2') => {
+        if (winner) return;
+        winner = w;
+        setRaceWinner(w);
+        (w === 'hf' ? r2Abort : hfAbort).aborted = true;
+        setModelUrlOverride('gemma-4-e2b-it', {
+          proApple: w === 'hf' ? HF_APPLE_URL : R2_APPLE_URL,
+        });
+        setRaceState('done');
+      };
+
+      // Both promises run to completion so we record both timings, but
+      // declareWinner fires off the main download as soon as the first one
+      // finishes — we don't wait for the loser's 200 MB.
+      run(HF_APPLE_URL, setHfProgress, hfAbort)
+        .then(t => { setHfTimeMs(t); declareWinner('hf'); })
+        .catch(e => { if (e.message !== 'aborted') console.warn('[race] HF', e.message); });
+      run(R2_APPLE_URL, setR2Progress, r2Abort)
+        .then(t => { setR2TimeMs(t); declareWinner('r2'); })
+        .catch(e => { if (e.message !== 'aborted') console.warn('[race] R2', e.message); });
+    })();
+  }, [lm.isDownloading]);
 
   useEffect(() => {
-    if (!lm.isDownloaded && !lm.isDownloading && !lmAttempted.current) {
+    if (
+      (raceState === 'done' || raceState === 'skip') &&
+      !lm.isDownloaded &&
+      !lm.isDownloading &&
+      !lmAttempted.current
+    ) {
       lmAttempted.current = true;
       setDownloadStartMs(Date.now());
       lm.download().catch(e => setError(`LM download: ${String(e)}`));
     }
-  }, [lm.isDownloaded, lm.isDownloading, lm.download]);
+  }, [raceState, lm.isDownloaded, lm.isDownloading, lm.download]);
 
   // Tick once per second while the LM is downloading so the elapsed-time
   // readout on the status line actually moves.
@@ -713,14 +805,38 @@ function ReviewScreen({
         style={[styles.outputBox, { marginTop: insets.top + 12 }]}
         contentContainerStyle={styles.outputContent}
       >
-        {lm.isDownloading ? (
+        {raceState === 'running' ? (
+          <View style={styles.raceCard}>
+            <Text style={styles.raceTitle}>CDN race · first to 200 MB wins</Text>
+            <RaceBar
+              label="HuggingFace"
+              progress={hfProgress}
+              timeMs={hfTimeMs}
+              isWinner={raceWinner === 'hf'}
+              raceDone={false}
+            />
+            <RaceBar
+              label="Cloudflare (deepsteve.com)"
+              progress={r2Progress}
+              timeMs={r2TimeMs}
+              isWinner={raceWinner === 'r2'}
+              raceDone={false}
+            />
+          </View>
+        ) : lm.isDownloading ? (
           <View style={styles.raceCard}>
             <Text style={styles.raceTitle}>
-              Downloading Gemma 4 E2B —{' '}
+              Downloading Gemma 4 E2B ({raceWinner === 'hf' ? 'HF' : raceWinner === 'r2' ? 'Cloudflare' : '…'}) —{' '}
               {downloadStartMs
                 ? `${Math.floor((nowMs - downloadStartMs) / 1000)}s elapsed`
                 : '…'}
             </Text>
+            {hfTimeMs && r2TimeMs && raceWinner ? (
+              <Text style={styles.raceSummary}>
+                Race: HF {(hfTimeMs / 1000).toFixed(1)}s · CF {(r2TimeMs / 1000).toFixed(1)}s — {raceWinner === 'r2' ? 'CF' : 'HF'} won by{' '}
+                {(Math.max(hfTimeMs, r2TimeMs) / Math.min(hfTimeMs, r2TimeMs)).toFixed(1)}×
+              </Text>
+            ) : null}
             <RaceBar
               label="4.68 GB"
               progress={lm.downloadProgress ?? 0}
@@ -730,7 +846,7 @@ function ReviewScreen({
             />
           </View>
         ) : null}
-        {statusLine && !lm.isDownloading ? (
+        {statusLine && raceState !== 'running' && !lm.isDownloading ? (
           <Text style={styles.statusText}>{statusLine}</Text>
         ) : null}
         {transcript ? (
