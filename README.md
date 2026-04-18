@@ -47,18 +47,7 @@ This is Karpathy-autoresearch-shaped but scoped to prompt-for-small-model optimi
 See [`HACKATHON.md`](HACKATHON.md) for:
 
 - Running Metro from behind a hostile network (ngrok tunnel + AppDelegate wiring).
-- The `cactus-react-native` registry patch that admits int4-only models (Gemma 4 E2B, included).
-- Self-hosting the model weights on Cloudflare R2 (instead of the default HuggingFace download).
-
-### Why host the model weights ourselves?
-
-Spoke with the Cactus team — clients shipping Cactus in production often prefer serving model weights from their own object storage rather than HuggingFace:
-
-- **Rate limits**: HF throttles anonymous download bandwidth and request counts; a popular app hitting their CDN can get its users 429'd.
-- **Control**: versioning, rollback, and deletion are all local decisions.
-- **Latency**: CDNs like Cloudflare R2 are often noticeably faster than HF's Xet-bridge, especially for the 4+ GB Apple/Core ML variants.
-
-This repo routes the `gemma-4-e2b-it-int4-pro` (Apple Neural Engine variant) download through R2. The `cactus-react-native` patch substitutes the registry URL for that one model; everything else still resolves against HF. See the patch section in `HACKATHON.md` for the mechanics.
+- The `cactus-react-native` registry patch that admits int4-only models + the native background-URLSession patch that keeps model downloads alive across app suspension.
 
 ---
 
