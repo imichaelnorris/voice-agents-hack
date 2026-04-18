@@ -36,6 +36,7 @@ import {
 } from 'cactus-react-native';
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import { ShaderWebView, extractShader } from './ShaderWebView';
+import { CANNED_SHADERS } from './cannedShaders';
 
 // Preflight CDN race: fetch 200 MB from HF and R2 in 10 MB chunks in parallel.
 // Chunked RNFS gives live progress between chunks — the only reliable way on
@@ -503,6 +504,10 @@ function ReviewScreen({
   const [hfTimeMs, setHfTimeMs] = useState<number | null>(null);
   const [r2TimeMs, setR2TimeMs] = useState<number | null>(null);
   const [raceWinner, setRaceWinner] = useState<'hf' | 'r2' | null>(null);
+  // Set when a chip with a canned shader is tapped. Skips Gemma; flows
+  // straight into ShaderWebView. Cleared whenever the user uses voice or
+  // text input so generation reclaims the screen.
+  const [manualShader, setManualShader] = useState<string | null>(null);
 
   const audioBuffer = useRef<number[]>([]);
   const dataSub = useRef<{ remove: () => void } | null>(null);
@@ -667,6 +672,7 @@ function ReviewScreen({
       const text = (res.response ?? '').trim();
       setTranscript(text);
       if (text) {
+        setManualShader(null);
         askGemma(text);
       } else {
         setError('No speech detected. Try again.');
@@ -708,12 +714,19 @@ function ReviewScreen({
   }, [isRecording, isGenerating, isFinalizing, startRecording, stopRecordingAndAsk]);
 
   const handleExamplePrompt = useCallback(
-    (prompt: string) => {
+    (label: string, prompt: string) => {
       if (isGenerating || isFinalizing || isRecording) return;
       setError(null);
       setTranscript(prompt);
       setResponse('');
-      askGemma(prompt);
+      const canned = CANNED_SHADERS[label];
+      if (canned) {
+        // Pre-baked shader from the eval rounds — skip Gemma entirely.
+        setManualShader(canned);
+      } else {
+        setManualShader(null);
+        askGemma(prompt);
+      }
     },
     [askGemma, isGenerating, isFinalizing, isRecording],
   );
@@ -725,6 +738,7 @@ function ReviewScreen({
     setTranscript(trimmed);
     setResponse('');
     setTyped('');
+    setManualShader(null);
     askGemma(trimmed);
   }, [typed, askGemma, isGenerating, isFinalizing, isRecording]);
 
@@ -751,8 +765,10 @@ function ReviewScreen({
   }, [response]);
 
   const shaderSource = useMemo(
-    () => (response && !isGenerating ? extractShader(response) : null),
-    [response, isGenerating],
+    () =>
+      manualShader ??
+      (response && !isGenerating ? extractShader(response) : null),
+    [manualShader, response, isGenerating],
   );
 
   const lmBusy = lm.isDownloading || !lm.isDownloaded;
@@ -871,20 +887,26 @@ function ReviewScreen({
         style={[styles.chipRow, { bottom: insets.bottom + 196 }]}
         contentContainerStyle={styles.chipRowContent}
       >
-        {EXAMPLE_PROMPTS.map(ex => (
-          <Pressable
-            key={ex.label}
-            onPress={() => handleExamplePrompt(ex.prompt)}
-            disabled={micDisabled || isRecording}
-            style={[
-              styles.chip,
-              (micDisabled || isRecording) && styles.chipDisabled,
-            ]}
-            hitSlop={6}
-          >
-            <Text style={styles.chipText}>{ex.label}</Text>
-          </Pressable>
-        ))}
+        {EXAMPLE_PROMPTS.map(ex => {
+          // Canned-shader chips don't need Gemma at all — they bypass the
+          // model and feed the WebView directly. So they stay tappable
+          // even while the model is still downloading or initializing.
+          const isCanned = ex.label in CANNED_SHADERS;
+          const disabled = isCanned
+            ? isRecording || isFinalizing || isGenerating
+            : micDisabled || isRecording;
+          return (
+            <Pressable
+              key={ex.label}
+              onPress={() => handleExamplePrompt(ex.label, ex.prompt)}
+              disabled={disabled}
+              style={[styles.chip, disabled && styles.chipDisabled]}
+              hitSlop={6}
+            >
+              <Text style={styles.chipText}>{ex.label}</Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
 
       <View style={[styles.inputRow, { bottom: insets.bottom + 130 }]}>
