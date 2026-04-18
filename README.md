@@ -1,4 +1,4 @@
-# DeepCactus
+# DeepShades
 
 A voice-prompted shader generator running Gemma 4 E2B on-device via [Cactus](https://cactuscompute.com/).
 
