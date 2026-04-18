@@ -187,6 +187,22 @@ function BackIcon({ color = '#fff', size = 24 }: { color?: string; size?: number
   );
 }
 
+function SendIcon({ color = '#fff', size = 22 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 12l16-7-6 16-2.5-6.5L4 12z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={color}
+        fillOpacity={0.15}
+      />
+    </Svg>
+  );
+}
+
 function CopyIcon({ color = '#fff', size = 22 }: { color?: string; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -408,6 +424,7 @@ function ReviewScreen({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [typed, setTyped] = useState('');
 
   const audioBuffer = useRef<number[]>([]);
   const dataSub = useRef<{ remove: () => void } | null>(null);
@@ -540,6 +557,16 @@ function ReviewScreen({
     [askGemma, isGenerating, isFinalizing, isRecording],
   );
 
+  const handleSendTyped = useCallback(() => {
+    const trimmed = typed.trim();
+    if (!trimmed || isGenerating || isFinalizing || isRecording) return;
+    setError(null);
+    setTranscript(trimmed);
+    setResponse('');
+    setTyped('');
+    askGemma(trimmed);
+  }, [typed, askGemma, isGenerating, isFinalizing, isRecording]);
+
   const handleShare = useCallback(async () => {
     if (!photoUri) return;
     try {
@@ -624,7 +651,7 @@ function ReviewScreen({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={[styles.chipRow, { bottom: insets.bottom + 140 }]}
+        style={[styles.chipRow, { bottom: insets.bottom + 196 }]}
         contentContainerStyle={styles.chipRowContent}
       >
         {EXAMPLE_PROMPTS.map(ex => (
@@ -642,6 +669,32 @@ function ReviewScreen({
           </Pressable>
         ))}
       </ScrollView>
+
+      <View style={[styles.inputRow, { bottom: insets.bottom + 130 }]}>
+        <TextInput
+          value={typed}
+          onChangeText={setTyped}
+          placeholder="Describe the shader…"
+          placeholderTextColor="rgba(245,247,250,0.5)"
+          style={styles.textInput}
+          editable={!micDisabled && !isRecording}
+          returnKeyType="send"
+          onSubmitEditing={handleSendTyped}
+          blurOnSubmit
+          multiline={false}
+        />
+        <Pressable
+          onPress={handleSendTyped}
+          disabled={!typed.trim() || micDisabled || isRecording}
+          style={[
+            styles.sendButton,
+            (!typed.trim() || micDisabled || isRecording) && styles.sendButtonDisabled,
+          ]}
+          hitSlop={8}
+        >
+          <SendIcon color="#fff" size={20} />
+        </Pressable>
+      </View>
 
       <View style={[styles.bottomRow, { paddingBottom: insets.bottom + 20 }]}>
         <Pressable onPress={onDiscard} style={styles.sideButton} hitSlop={12}>
@@ -1105,6 +1158,37 @@ const styles = StyleSheet.create({
   },
   chipDisabled: { opacity: 0.4 },
   chipText: { color: '#f5f7fa', fontSize: 13, fontWeight: '600' },
+
+  inputRow: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(15,17,20,0.82)',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    paddingLeft: 16,
+    paddingRight: 6,
+    paddingVertical: 4,
+  },
+  textInput: {
+    flex: 1,
+    color: '#f5f7fa',
+    fontSize: 15,
+    paddingVertical: 10,
+  },
+  sendButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#3b82f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendButtonDisabled: { opacity: 0.4 },
 
   bottomRow: {
     position: 'absolute',
