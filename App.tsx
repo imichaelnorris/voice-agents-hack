@@ -816,7 +816,7 @@ function ReviewScreen({
               raceDone={false}
             />
             <RaceBar
-              label="Cloudflare (deepsteve.com)"
+              label="Cloudflare"
               progress={r2Progress}
               timeMs={r2TimeMs}
               isWinner={raceWinner === 'r2'}
@@ -1358,20 +1358,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 4,
   },
-  raceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   raceTitle: { color: '#f5f7fa', fontSize: 14, fontWeight: '700' },
-  raceInfoButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
   raceBarRow: { gap: 4 },
   raceBarHeader: {
     flexDirection: 'row',
@@ -1400,34 +1387,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontStyle: 'italic',
   },
-  raceInfoBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  raceInfoCard: {
-    backgroundColor: '#1a1d22',
-    borderRadius: 20,
-    padding: 20,
-    gap: 12,
-    maxWidth: 420,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  raceInfoTitle: { color: '#f5f7fa', fontSize: 18, fontWeight: '700' },
-  raceInfoBody: { color: '#c8cbce', fontSize: 14, lineHeight: 20 },
-  raceInfoDismiss: {
-    marginTop: 4,
-    alignSelf: 'flex-end',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    backgroundColor: '#3b82f6',
-  },
-  raceInfoDismissText: { color: '#fff', fontWeight: '600' },
-
   chipRow: {
     position: 'absolute',
     left: 0,

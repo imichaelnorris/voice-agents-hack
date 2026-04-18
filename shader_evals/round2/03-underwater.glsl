@@ -5,32 +5,26 @@ uniform vec2 u_resolution;
 varying vec2 v_uv;
 
 void main() {
-    vec2 uv = v_uv;
+    vec4 color = texture2D(u_texture, v_uv);
 
-    // 1. Underwater Tint (Simulating blue/green water)
-    vec3 color = texture2D(u_texture, uv).rgb;
-    
-    // Simple blue/cyan tint for the water effect
-    vec3 water_tint = vec3(0.1, 0.4, 0.6);
-    color = mix(color, water_tint, 0.3);
+    // 1. Underwater Color Shift (Deep Blue/Cyan)
+    // Simulate light absorption and water color
+    vec3 underwater_color = mix(color.rgb, vec3(0.1, 0.3, 0.5), 0.5);
 
     // 2. Caustics Simulation
-    // Create dynamic, moving caustic patterns using time and UV coordinates
-    float caustic_pattern = sin(uv.x * 10.0 + u_time * 5.0) * cos(uv.y * 10.0 + u_time * 5.0);
+    // Create dynamic, moving light patterns using sine waves
+    float caustic_pattern = 0.0;
     
-    // Amplify the pattern to create bright lines/patches
-    caustic_pattern = pow(caustic_pattern, 2.0);
-    caustic_pattern = pow(caustic_pattern, 4.0); // Sharpen the effect
-
-    // Use the caustic pattern to modulate the brightness or introduce light streaks
-    // We use the pattern to brighten areas, simulating light refraction
-    float caustic_light = caustic_pattern * 1.5;
+    // Use UV coordinates and time to create moving, wavy patterns
+    float wave1 = sin(v_uv.x * 10.0 + u_time * 2.0) * 0.5 + 0.5;
+    float wave2 = cos(v_uv.y * 10.0 + u_time * 3.0) * 0.5 + 0.5;
     
-    // Blend the original color with the caustic light
-    color = color + caustic_light * 0.5;
+    // Combine waves to create a complex caustic effect
+    caustic_pattern = (wave1 + wave2) * 0.5;
+    
+    // Apply the caustic pattern to enhance the light effect
+    // We modulate the brightness based on the pattern
+    vec3 final_color = underwater_color * (1.0 + caustic_pattern * 0.5);
 
-    // 3. Final Clamping
-    color = clamp(color, 0.0, 1.0);
-
-    gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = vec4(final_color, color.a);
 }

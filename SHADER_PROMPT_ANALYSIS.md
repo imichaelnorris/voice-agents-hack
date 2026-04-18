@@ -76,3 +76,35 @@ All 5 prompts returned syntactically valid GLSL ES 1.00 with exactly the declare
 
 These are cheap to run. Once we have a desktop harness that automates (run → compile-check → tally) we can start running real evals instead of eyeballing.
 
+## Round 2 — outputs (system prompt + clamp directive)
+
+Same model (`gemma4:e2b` via Ollama, temp 0.2), same 5 prompts, but the system prompt now matches `App.tsx`'s `SHADER_SYSTEM_PROMPT` — the only delta from round 1 is one new line:
+
+> Clamp the final RGB to [0, 1] so additive effects don't blow out to white.
+
+Aimed at fixing #3 (underwater blowout). Raw outputs in `shader_evals/round2/`. Reproduce with `shader_evals/round2/run.sh`.
+
+| # | Prompt | Δ vs round 1 | Compile-look | Renders non-trivially | Matches intent |
+|---|---|---|---|---|---|
+| 1 | invert the colors | **REGRESSION** | ❌ no `void main() { ... }`, just bare statements | ❌ | ❌ won't compile |
+| 2 | CRT scanlines | mostly same; tacked clamp code AFTER `gl_FragColor` (dead) + bizarre vertical-center darkening | ✅ | ✅ | weaker — animated scanlines + misplaced edge darkening |
+| 3 | underwater + caustics | **FIXED** — uses `mix(color, blue, 0.5)` and multiplicative caustic factor `(1 + p * 0.5)` instead of additive overlay | ✅ | ✅ | ✅ no blowout |
+| 4 | vignette edges | `pow(dist_sq * 2.0, 1.5)` (was 2.0); slightly less harsh | ✅ | ✅ | ✅ |
+| 5 | neon glow | unchanged — magenta tint + time pulse, no bloom | ✅ | ✅ | ❌ same semantic miss |
+
+### What the clamp directive actually did
+
+Cure: round 1's underwater blowout is gone. The model interpreted "clamp additive effects" correctly there — used `mix()` and multiplicative modulation, no `+` overlays.
+
+Cost: at least one regression and one weakening. The longer prompt seems to have nudged the model toward including clamp-related code somewhere even when it wasn't load-bearing — the CRT shader has an `if (color.r > 1.0) color.r = 1.0;` block dropped in *after* `gl_FragColor` is already assigned, and the invert shader lost its `main()` entirely. Both feel like the model trying to "show its work" on the new constraint and corrupting structure in the process.
+
+Net: 1 win (underwater), 1 regression (invert won't compile), 1 weakening (CRT). Not an unambiguous improvement.
+
+### Hypotheses for round 3
+
+1. **Move the clamp directive out of the open-ended free text** and into the example uniform block as an inline comment, e.g. `// gl_FragColor.rgb = clamp(rgb, 0.0, 1.0); // suggested but not required`. The model is more likely to mirror code patterns than to internalize prose constraints.
+2. **Add one explicit positive few-shot example** showing a complete, well-formed shader with `void main()`. Round 2 lost `main` on the easiest prompt — that's a structure-preservation problem, not a semantic one. A canonical example anchors the structure.
+3. **Try temperature 0.0** to remove the variance, or temperature 0.7 to escape local minima — the round 1 → round 2 regressions on invert/CRT might be a local-minimum effect of low-temp + slightly-different prompt.
+
+Cheapest test for #2: rerun round 2 with one prepended assistant turn (the round 1 invert output, which was perfect). If invert stops regressing, structure preservation is the dominant failure mode and few-shot examples are the right lever.
+
