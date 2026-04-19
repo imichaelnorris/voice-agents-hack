@@ -335,6 +335,57 @@ function CollapseIcon({ color = '#fff', size = 18 }: { color?: string; size?: nu
   );
 }
 
+function StarIcon({
+  color = '#fff',
+  size = 22,
+  filled = false,
+}: {
+  color?: string;
+  size?: number;
+  filled?: boolean;
+}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1L3.2 9.4l6.1-.9L12 3z"
+        stroke={color}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={filled ? color : 'none'}
+      />
+    </Svg>
+  );
+}
+
+function HistoryIcon({ color = '#fff', size = 22 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M3 12a9 9 0 1 0 3-6.7"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M3 4v5h5"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M12 7v5l3 2"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 function CopyIcon({ color = '#fff', size = 22 }: { color?: string; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -549,6 +600,49 @@ const TUTORIAL_PROMPTS = [
 // least once, so we skip it on launch. The (?) button on the camera page
 // re-opens the tutorial regardless.
 const TUTORIAL_FLAG_PATH = `${RNFS.DocumentDirectoryPath}/tutorial-seen.flag`;
+
+// Persisted history of successfully-generated shaders. Many-to-one to
+// prompts is fine: re-running the same text adds another entry. Capped at
+// 100 newest-first so the file stays small enough to load synchronously.
+const SHADER_HISTORY_PATH = `${RNFS.DocumentDirectoryPath}/shader-history.json`;
+const SHADER_HISTORY_MAX = 100;
+type ShaderHistoryEntry = {
+  id: string;
+  prompt: string;
+  shader: string;
+  createdAt: number;
+  favorite?: boolean;
+};
+
+async function loadShaderHistory(): Promise<ShaderHistoryEntry[]> {
+  try {
+    const exists = await RNFS.exists(SHADER_HISTORY_PATH);
+    if (!exists) return [];
+    const raw = await RNFS.readFile(SHADER_HISTORY_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Defend against malformed entries leaking from prior schema versions.
+    return parsed.filter(
+      (e): e is ShaderHistoryEntry =>
+        e &&
+        typeof e.id === 'string' &&
+        typeof e.prompt === 'string' &&
+        typeof e.shader === 'string' &&
+        typeof e.createdAt === 'number',
+    );
+  } catch {
+    return [];
+  }
+}
+
+async function saveShaderHistory(entries: ShaderHistoryEntry[]): Promise<void> {
+  try {
+    await RNFS.writeFile(SHADER_HISTORY_PATH, JSON.stringify(entries), 'utf8');
+  } catch {
+    // Persistence failure is non-fatal — the in-memory history still works
+    // for this session.
+  }
+}
 
 // Cloudflared quick tunnel pointing at eval_server/server.mjs (localhost:9000).
 // Quick-tunnel URLs rotate every restart — update this string and rebuild
@@ -1094,6 +1188,63 @@ function ReviewScreen({
   // transcript + Gemma response.
   const [isOutputExpanded, setIsOutputExpanded] = useState(false);
   const outputScrollRef = useRef<ScrollView>(null);
+
+  const [history, setHistory] = useState<ShaderHistoryEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    loadShaderHistory().then(entries => {
+      if (!cancelled) setHistory(entries);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const appendHistory = useCallback((prompt: string, shader: string) => {
+    setHistory(prev => {
+      const entry: ShaderHistoryEntry = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        prompt,
+        shader,
+        createdAt: Date.now(),
+        favorite: false,
+      };
+      // When trimming to MAX, never evict favorites — drop oldest non-fav
+      // first. So a user who's favorited 100 entries simply stops getting
+      // new history (acceptable scope for the hackathon).
+      const merged = [entry, ...prev];
+      let next = merged;
+      if (merged.length > SHADER_HISTORY_MAX) {
+        const favs = merged.filter(e => e.favorite);
+        const nonFavs = merged.filter(e => !e.favorite);
+        const keepNonFavs = Math.max(0, SHADER_HISTORY_MAX - favs.length);
+        next = [...favs, ...nonFavs.slice(0, keepNonFavs)].sort(
+          (a, b) => b.createdAt - a.createdAt,
+        );
+      }
+      saveShaderHistory(next);
+      return next;
+    });
+  }, []);
+  const toggleFavorite = useCallback((id: string) => {
+    setHistory(prev => {
+      const next = prev.map(e =>
+        e.id === id ? { ...e, favorite: !e.favorite } : e,
+      );
+      saveShaderHistory(next);
+      return next;
+    });
+  }, []);
+  const sortedHistory = useMemo(() => {
+    // Favorites first (newest favorite at top), then non-favorites by
+    // createdAt desc.
+    return [...history].sort((a, b) => {
+      const fa = a.favorite ? 1 : 0;
+      const fb = b.favorite ? 1 : 0;
+      if (fa !== fb) return fb - fa;
+      return b.createdAt - a.createdAt;
+    });
+  }, [history]);
   const [nowMs, setNowMs] = useState(Date.now());
   const [downloadStartMs, setDownloadStartMs] = useState<number | null>(null);
   useEffect(() => {
@@ -1240,6 +1391,10 @@ function ReviewScreen({
           },
         });
         setResponse(acc);
+        const extracted = extractShader(acc);
+        if (extracted) {
+          appendHistory(prompt, extracted);
+        }
         const doneAt = Date.now();
         setInferenceDebug(
           [
@@ -1283,8 +1438,22 @@ function ReviewScreen({
         setIsGenerating(false);
       }
     },
-    [photoUri, lm],
+    [photoUri, lm, appendHistory],
   );
+
+  // Cancel an in-flight inference if the screen unmounts (user navigates
+  // back to camera). Stash lm in a ref so the cleanup only fires on real
+  // unmount — listing `lm` in the dep array would re-fire the cleanup
+  // every time useCactusLM returns a new wrapper object (which happens
+  // on every parent re-render), aborting the active generation mid-
+  // stream.
+  const lmStopRef = useRef(lm);
+  lmStopRef.current = lm;
+  useEffect(() => {
+    return () => {
+      lmStopRef.current.stop().catch(() => {});
+    };
+  }, []);
 
   const stopRecordingAndAsk = useCallback(async () => {
     setIsFinalizing(true);
@@ -1585,7 +1754,11 @@ function ReviewScreen({
               numberOfLines={isOutputExpanded ? 0 : 1}
             >
               <Text style={styles.responseLabel}>Gemma: </Text>
-              {response}
+              {isOutputExpanded
+                ? response
+                : isGenerating
+                  ? (response.split('\n').filter(l => l.trim()).pop() || response)
+                  : response}
               {isGenerating ? <Text style={styles.cursor}>▍</Text> : null}
             </Text>
           ) : null}
@@ -1641,6 +1814,17 @@ function ReviewScreen({
           },
         ]}
       >
+        <Pressable
+          onPress={() => setShowHistory(true)}
+          disabled={history.length === 0}
+          style={[
+            styles.historyButton,
+            history.length === 0 && styles.sendButtonDisabled,
+          ]}
+          hitSlop={8}
+        >
+          <HistoryIcon color="#fff" size={20} />
+        </Pressable>
         <TextInput
           value={typed}
           onChangeText={setTyped}
@@ -1779,6 +1963,80 @@ function ReviewScreen({
             <Text selectable style={styles.debugText}>
               {shaderSource || '(no shader active)'}
             </Text>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showHistory}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowHistory(false)}
+      >
+        <View style={styles.debugScreen}>
+          <View style={[styles.debugTopBar, { paddingTop: insets.top + 8 }]}>
+            <Pressable
+              onPress={() => setShowHistory(false)}
+              hitSlop={12}
+              style={styles.debugTopIcon}
+            >
+              <CloseIcon color="#fff" size={24} />
+            </Pressable>
+            <Text style={styles.debugTitle}>Shader history</Text>
+            <View style={styles.debugTopIcon} />
+          </View>
+          <ScrollView
+            style={styles.debugBody}
+            contentContainerStyle={{ paddingBottom: 24 }}
+          >
+            {sortedHistory.length === 0 ? (
+              <Text style={[styles.debugText, { padding: 16, textAlign: 'center' }]}>
+                No shaders yet. Generate one and it'll show up here.
+              </Text>
+            ) : (
+              sortedHistory.map(entry => {
+                const ageMs = Date.now() - entry.createdAt;
+                const seconds = Math.floor(ageMs / 1000);
+                const ago =
+                  seconds < 60
+                    ? `${seconds}s ago`
+                    : seconds < 3600
+                    ? `${Math.floor(seconds / 60)}m ago`
+                    : seconds < 86400
+                    ? `${Math.floor(seconds / 3600)}h ago`
+                    : `${Math.floor(seconds / 86400)}d ago`;
+                return (
+                  <View key={entry.id} style={styles.historyRow}>
+                    <Pressable
+                      onPress={() => toggleFavorite(entry.id)}
+                      hitSlop={10}
+                      style={styles.historyStar}
+                    >
+                      <StarIcon
+                        color={entry.favorite ? '#facc15' : '#9ba1a6'}
+                        size={20}
+                        filled={!!entry.favorite}
+                      />
+                    </Pressable>
+                    <Pressable
+                      style={styles.historyRowBody}
+                      onPress={() => {
+                        setManualShader(entry.shader);
+                        setTranscript(entry.prompt);
+                        setResponse('');
+                        setError(null);
+                        setShowHistory(false);
+                      }}
+                    >
+                      <Text style={styles.historyPrompt} numberOfLines={2}>
+                        {entry.prompt}
+                      </Text>
+                      <Text style={styles.historyMeta}>{ago}</Text>
+                    </Pressable>
+                  </View>
+                );
+              })
+            )}
           </ScrollView>
         </View>
       </Modal>
@@ -2402,7 +2660,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
-    paddingLeft: 16,
+    paddingLeft: 6,
     paddingRight: 6,
     paddingVertical: 4,
   },
@@ -2411,6 +2669,41 @@ const styles = StyleSheet.create({
     color: '#f5f7fa',
     fontSize: 15,
     paddingVertical: 10,
+  },
+  historyButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+    gap: 12,
+  },
+  historyStar: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  historyRowBody: {
+    flex: 1,
+  },
+  historyPrompt: {
+    color: '#f5f7fa',
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  historyMeta: {
+    color: '#9ba1a6',
+    fontSize: 12,
+    marginTop: 4,
   },
   sendButton: {
     width: 38,
