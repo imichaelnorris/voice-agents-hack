@@ -25,11 +25,33 @@ uniform vec2 u_resolution;
 varying vec2 v_uv;
 
 void main() {
-  vec4 color = texture2D(u_texture, v_uv);
-  float scanline = mod(floor(v_uv.y * u_resolution.y), 2.0);
-  float scanline_factor = 1.0 - (scanline * 0.1);
-  color.rgb *= scanline_factor;
-  gl_FragColor = color;
+  vec3 color = texture2D(u_texture, v_uv).rgb;
+
+  // Hard scanlines that slowly roll downward — sin() gives soft bands,
+  // pow() squeezes them so the dark stripes are clearly defined. Density
+  // is fixed in screen-space so the bands stay the same thickness across
+  // resolutions. u_time shifts the phase ~0.6 cycles/sec.
+  float scanY = v_uv.y * u_resolution.y * 0.5 - u_time * 30.0;
+  float scan = pow(0.5 + 0.5 * sin(scanY), 1.5);
+  scan = mix(0.35, 1.0, scan);
+
+  // Subpixel RGB phosphor mask — every third column biases toward R/G/B
+  // for that classic shadow-mask shimmer.
+  float colX = mod(floor(v_uv.x * u_resolution.x), 3.0);
+  vec3 mask = vec3(0.7);
+  if (colX < 1.0) mask.r = 1.4;
+  else if (colX < 2.0) mask.g = 1.4;
+  else mask.b = 1.4;
+
+  // Slow brightness pulse + edge vignette for tube curvature.
+  float flicker = 0.97 + 0.03 * sin(u_time * 8.0);
+  vec2 d = v_uv - 0.5;
+  float vignette = 1.0 - dot(d, d) * 0.9;
+
+  color *= scan * vignette * flicker;
+  color *= mask;
+
+  gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }`,
 
   // Hand-tuned. Adds UV-space ripple distortion on top of the Round-2 caustic

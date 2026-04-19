@@ -25,10 +25,13 @@ The app scaffold, camera capture, voice capture, model download/init, and on-dev
 
 Turn the transcribed voice prompt into a fragment shader and render it over the photo.
 
+The goal is to demonstrate dynamically producing *compilable code* (GLSL) on-device from a voice prompt. That capability is practical for photo apps, games, and any other real-time graphics surface where shaders are the native unit of visual effect.
+
 - **Render target**: WebView. Shader is injected into an HTML page that draws a WebGL quad, using the photo as a texture input.
 - **Generation**: Gemma 4 E2B emits the shader source. The system prompt is the main lever we're optimizing.
 - **Eval loop** (desktop first, mobile later): a seed set of ~100 user prompts; for each, ask Gemma for a shader; score pass/fail on "compiles + renders non-trivially", with Claude Code as the judge for ambiguous cases.
 - **Deliverable**: a hand-tuned system prompt that pushes eval pass rate as high as possible. The interesting sub-problem is discovering Gemma 4 E2B's failure modes (hallucinated GLSL builtins? mis-declared `precision`? wrong `gl_FragCoord` conventions?) and writing the system prompt to steer around them.
+- **Shareable outputs** (planned): export the shaded photo as an image, and — if the shader is animated (`iTime`-dependent) — record a short loop and export as a video. Makes the output something a user can actually send to a friend.
 
 ### Stage 2 — Prompt optimizer (future, separate repo)
 

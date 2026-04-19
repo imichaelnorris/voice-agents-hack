@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Image,
   Keyboard,
   Modal,
+  PanResponder,
   PermissionsAndroid,
   Platform,
   Pressable,
@@ -1153,6 +1155,118 @@ function CameraScreen({
   );
 }
 
+function HistoryRowItem({
+  entry,
+  ago,
+  onApply,
+  onView,
+  onToggleFavorite,
+  onDelete,
+  onSwipeActive,
+}: {
+  entry: ShaderHistoryEntry;
+  ago: string;
+  onApply: () => void;
+  onView: () => void;
+  onToggleFavorite: () => void;
+  onDelete: () => void;
+  // Fires with true when this row claims the gesture and false when it
+  // releases. The parent uses it to disable scroll on the surrounding
+  // ScrollView so a vertical drift mid-swipe doesn't scroll the list.
+  onSwipeActive: (active: boolean) => void;
+}) {
+  // PanResponder + Animated.Value give us swipe-to-delete without adding
+  // react-native-gesture-handler. Tuning notes:
+  //   - Capture variants run BEFORE descendants/parents (the ScrollView)
+  //     get the gesture, so we can claim it before scroll kicks in.
+  //   - Activation requires dx to dominate dy by 2× and exceed 6 px so
+  //     vertical scrolls aren't stolen on diagonal touches.
+  //   - Threshold to commit the delete is 50 px (was 80) for a more
+  //     forgiving swipe.
+  //   - onPanResponderTerminationRequest returns false so the ScrollView
+  //     can't yank the gesture back mid-swipe.
+  const SWIPE_DELETE_THRESHOLD = 50;
+  const SWIPE_ACTIVATE_DX = 6;
+  const translateX = useRef(new Animated.Value(0)).current;
+  const [removing, setRemoving] = useState(false);
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onStartShouldSetPanResponderCapture: () => false,
+        onMoveShouldSetPanResponder: (_e, g) =>
+          Math.abs(g.dx) > SWIPE_ACTIVATE_DX && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+        onMoveShouldSetPanResponderCapture: (_e, g) =>
+          Math.abs(g.dx) > SWIPE_ACTIVATE_DX && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+        onPanResponderGrant: () => {
+          onSwipeActive(true);
+        },
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderMove: (_e, g) => {
+          translateX.setValue(Math.min(0, g.dx));
+        },
+        onPanResponderRelease: (_e, g) => {
+          onSwipeActive(false);
+          if (g.dx < -SWIPE_DELETE_THRESHOLD) {
+            setRemoving(true);
+            Animated.timing(translateX, {
+              toValue: -500,
+              duration: 180,
+              useNativeDriver: true,
+            }).start(() => onDelete());
+          } else {
+            Animated.spring(translateX, {
+              toValue: 0,
+              useNativeDriver: true,
+              bounciness: 0,
+            }).start();
+          }
+        },
+        onPanResponderTerminate: () => {
+          onSwipeActive(false);
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 0,
+          }).start();
+        },
+      }),
+    [translateX, onDelete, onSwipeActive],
+  );
+
+  return (
+    <View style={styles.historyRowOuter}>
+      <View style={styles.historyDeleteBg} pointerEvents="none">
+        <Text style={styles.historyDeleteText}>Delete</Text>
+      </View>
+      <Animated.View
+        style={[
+          styles.historyRow,
+          { transform: [{ translateX }], opacity: removing ? 0.6 : 1 },
+        ]}
+        {...panResponder.panHandlers}
+      >
+        <Pressable onPress={onToggleFavorite} hitSlop={10} style={styles.historyStar}>
+          <StarIcon
+            color={entry.favorite ? '#facc15' : '#9ba1a6'}
+            size={20}
+            filled={!!entry.favorite}
+          />
+        </Pressable>
+        <Pressable style={styles.historyRowBody} onPress={onApply}>
+          <Text style={styles.historyPrompt} numberOfLines={2}>
+            {entry.prompt}
+          </Text>
+          <Text style={styles.historyMeta}>{ago}</Text>
+        </Pressable>
+        <Pressable onPress={onView} hitSlop={10} style={styles.historyView}>
+          <CodeIcon color="#9ba1a6" size={18} />
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+}
+
 function ReviewScreen({
   photoUri,
   onDiscard,
@@ -1235,6 +1349,23 @@ function ReviewScreen({
       return next;
     });
   }, []);
+  const deleteFromHistory = useCallback((id: string) => {
+    setHistory(prev => {
+      const next = prev.filter(e => e.id !== id);
+      saveShaderHistory(next);
+      return next;
+    });
+  }, []);
+  // Source shown by the "Shader source" modal — when the user taps the
+  // code-icon on a history row we want to inspect that entry's source
+  // without applying it (which would replace the live shader). Falls back
+  // to the active shaderSource when the modal opens via the existing
+  // "View shader" path.
+  const [viewerShader, setViewerShader] = useState<string | null>(null);
+  // Set to true while any history row is being actively swiped, so the
+  // surrounding ScrollView stops scrolling — otherwise a vertical drift
+  // mid-swipe would scroll the list out from under the user.
+  const [historyRowSwiping, setHistoryRowSwiping] = useState(false);
   const sortedHistory = useMemo(() => {
     // Favorites first (newest favorite at top), then non-favorites by
     // createdAt desc.
@@ -1530,8 +1661,11 @@ function ReviewScreen({
           return;
         }
         // Pre-baked shader from the eval rounds — skip Gemma entirely.
+        // Mirror the generated-shader path: pipe the source through
+        // setResponse so the output box at the top shows it (collapsed
+        // teaser + tap-to-expand), same as anything Gemma writes.
         setTranscript(prompt);
-        setResponse('');
+        setResponse(canned);
         setManualShader(canned);
       } else {
         setTranscript(prompt);
@@ -1579,16 +1713,17 @@ function ReviewScreen({
   );
 
   const handleCopyShader = useCallback(async () => {
-    if (!shaderSource) {
+    const src = viewerShader || shaderSource;
+    if (!src) {
       Alert.alert('No shader', 'Generate or pick a shader first.');
       return;
     }
     try {
-      await Share.share({ message: shaderSource });
+      await Share.share({ message: src });
     } catch (err) {
       Alert.alert('Share failed', err instanceof Error ? err.message : String(err));
     }
-  }, [shaderSource]);
+  }, [shaderSource, viewerShader]);
 
   const handleShare = useCallback(async () => {
     if (!photoUri || isCapturing) return;
@@ -1936,12 +2071,18 @@ function ReviewScreen({
         visible={showShader}
         animationType="slide"
         transparent={false}
-        onRequestClose={() => setShowShader(false)}
+        onRequestClose={() => {
+          setShowShader(false);
+          setViewerShader(null);
+        }}
       >
         <View style={styles.debugScreen}>
           <View style={[styles.debugTopBar, { paddingTop: insets.top + 8 }]}>
             <Pressable
-              onPress={() => setShowShader(false)}
+              onPress={() => {
+                setShowShader(false);
+                setViewerShader(null);
+              }}
               hitSlop={12}
               style={styles.debugTopIcon}
             >
@@ -1961,7 +2102,7 @@ function ReviewScreen({
             contentContainerStyle={styles.debugBodyContent}
           >
             <Text selectable style={styles.debugText}>
-              {shaderSource || '(no shader active)'}
+              {viewerShader || shaderSource || '(no shader active)'}
             </Text>
           </ScrollView>
         </View>
@@ -1983,11 +2124,12 @@ function ReviewScreen({
               <CloseIcon color="#fff" size={24} />
             </Pressable>
             <Text style={styles.debugTitle}>Shader history</Text>
-            <View style={styles.debugTopIcon} />
+            <View style={{ width: 40, height: 40 }} />
           </View>
           <ScrollView
             style={styles.debugBody}
             contentContainerStyle={{ paddingBottom: 24 }}
+            scrollEnabled={!historyRowSwiping}
           >
             {sortedHistory.length === 0 ? (
               <Text style={[styles.debugText, { padding: 16, textAlign: 'center' }]}>
@@ -2006,34 +2148,26 @@ function ReviewScreen({
                     ? `${Math.floor(seconds / 3600)}h ago`
                     : `${Math.floor(seconds / 86400)}d ago`;
                 return (
-                  <View key={entry.id} style={styles.historyRow}>
-                    <Pressable
-                      onPress={() => toggleFavorite(entry.id)}
-                      hitSlop={10}
-                      style={styles.historyStar}
-                    >
-                      <StarIcon
-                        color={entry.favorite ? '#facc15' : '#9ba1a6'}
-                        size={20}
-                        filled={!!entry.favorite}
-                      />
-                    </Pressable>
-                    <Pressable
-                      style={styles.historyRowBody}
-                      onPress={() => {
-                        setManualShader(entry.shader);
-                        setTranscript(entry.prompt);
-                        setResponse('');
-                        setError(null);
-                        setShowHistory(false);
-                      }}
-                    >
-                      <Text style={styles.historyPrompt} numberOfLines={2}>
-                        {entry.prompt}
-                      </Text>
-                      <Text style={styles.historyMeta}>{ago}</Text>
-                    </Pressable>
-                  </View>
+                  <HistoryRowItem
+                    key={entry.id}
+                    entry={entry}
+                    ago={ago}
+                    onApply={() => {
+                      setManualShader(entry.shader);
+                      setTranscript(entry.prompt);
+                      setResponse('');
+                      setError(null);
+                      setShowHistory(false);
+                    }}
+                    onView={() => {
+                      setViewerShader(entry.shader);
+                      setShowHistory(false);
+                      setShowShader(true);
+                    }}
+                    onToggleFavorite={() => toggleFavorite(entry.id)}
+                    onDelete={() => deleteFromHistory(entry.id)}
+                    onSwipeActive={setHistoryRowSwiping}
+                  />
                 );
               })
             )}
@@ -2677,6 +2811,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  historyRowOuter: {
+    position: 'relative',
+    backgroundColor: '#0f1114',
+  },
   historyRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2685,6 +2823,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.06)',
     gap: 12,
+    backgroundColor: '#0f1114',
+  },
+  historyDeleteBg: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    backgroundColor: '#7f1d1d',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingRight: 24,
+  },
+  historyDeleteText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
   },
   historyStar: {
     width: 32,
@@ -2694,6 +2849,12 @@ const styles = StyleSheet.create({
   },
   historyRowBody: {
     flex: 1,
+  },
+  historyView: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   historyPrompt: {
     color: '#f5f7fa',
