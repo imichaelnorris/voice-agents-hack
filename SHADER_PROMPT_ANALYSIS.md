@@ -159,3 +159,59 @@ These are the cheap, high-leverage edits to test next:
 
 Item (4) is the most leveraged — it makes the loop honest. Item (1) probably moves real-pass-rate from ~44% to ~70% on its own (eliminates the type-error class).
 
+## Eval infrastructure (current state)
+
+Three runners feeding the same `analyze.mjs` so every batch is scored by the same rubric.
+
+| runner | model surface | precision | speed | use when |
+|---|---|---|---|---|
+| `eval_server/run_batch.mjs` | iPhone via WebSocket (eval server + cloudflared tunnel) | int4 + Apple Neural Engine `.mlpackage` | ~12s/inference, thermal-bound at 30+ in a row | only for final ground-truth before claiming a prompt works |
+| `eval_server/run_cactus.py` | Cactus python → same INT4 weights as the phone, but Mac CPU (no Neural Engine) | int4 (identical bytes) | ~17 min for 50 prompts | **the iteration loop** — closest behaviour we can run locally |
+| `eval_server/run_local.mjs` | Ollama `gemma4:e2b` (full precision, ~7 GB) | full / Q8-ish | ~1–10 s/inference | quick experiments where exact behaviour doesn't matter |
+
+All three emit JSONL in the same shape; `analyze.mjs` runs each shader through `glslangValidator` (Khronos reference compiler) so pass/fail is an actual GLSL ES 1.00 compile, not a string-shape regex.
+
+Batches live in `eval_server/batches/<name>.json` with optional `systemPrompt` and per-prompt overrides. `run_batch.mjs --gap N` paces prompts to the phone for thermal cooldown.
+
+## Eval rounds so far (compile pass-rates)
+
+| round | model surface | system prompt | result | notes |
+|---|---|---|---|---|
+| 1 (Ollama) | full-precision gemma4:e2b | minimal | eyeball ~80% | shape-only check, no compile |
+| 2 (Ollama) | full-precision gemma4:e2b | + clamp-RGB directive | eyeball mixed | introduced regressions |
+| 3 (phone) | iPhone INT4 + ANE | round-2 prompt (current `SHADER_SYSTEM_PROMPT` in `App.tsx`) | **27 / 50 = 54%** | baseline; underwater, vignette, neon, pixelate, thermal, glitch all <60% |
+| 3.5 (Cactus on Mac) | same INT4 weights as phone, CPU only | same as round 3 | **34 / 50 = 68%** | Mac is +14% absolute over phone with identical weights — sampler nondeterminism + CPU vs ANE small differences. Failure *patterns* match, so prompt fixes here should transfer; absolute numbers won't. |
+| 4 Variant A (Cactus on Mac) | same | + 6 explicit GLSL ES 1.00 type rules in system prompt (`pow(vec3,scalar)`, `mix` return type, `vec3 = scalar`, alpha on gl_FragColor, no redeclare, `vec3(0.0)` not `0.0`) | **in progress** (Mac, batch `round4-typerules.json`) | hypothesis: type-rule class is the dominant compile-fail mode — should jump to ~42–45/50 if so |
+
+## Dominant failure modes (counted from round 3)
+
+These are what the type-rules system prompt targets:
+
+| failure mode | sample error from glslang | round-3 count | example concept |
+|---|---|---|---|
+| `pow(vec3, float)` | `'pow' : no matching overloaded function found` | 3+ | neon (5/5) |
+| vec3 ← scalar/vec2/vec4 assignment | `cannot convert from ' temp mediump float' to ' temp mediump 3-component vector of float'` | 8+ | sepia, posterize, pixelate, vignette |
+| variable redefinition | `'caustics' : redefinition` | 1 | underwater-r2 |
+| `gl_FragColor` set to vec3 | constructor-arity error | 1+ | thermal-r4 |
+| ad-hoc formula instead of canonical | semantic — sepia tan instead of luminance matrix; thermal channel-mush instead of color ramp | most of sepia, all of thermal | sepia, thermal |
+| missing semantic intent | "neon glow" → magenta tint with no actual bloom | 5/5 | neon |
+
+Type-rule class (top 4 rows) accounts for the bulk of compile failures. Round 4 Variant A targets exactly this. If it works, round 5 adds canonical-formula few-shots for the bottom-two semantic-miss rows.
+
+## Round 4 plan
+
+- **Variant A** (running now): type rules only. Measures: does explicit GLSL syntax instruction close the compile gap?
+- **Variant B** (queued, not yet written): A + few-shot the canonical sepia matrix + thermal LUT. Measures: do few-shot examples for canonical formulas eliminate the ad-hoc-formula failures?
+- **Variant C** (queued): A + B + a single-tap-bloom example for "glow"-style prompts. Measures: does few-shot architecture transfer across concept families?
+
+After Round 4 we re-validate the winner on the iPhone. Phone numbers will be lower than Mac numbers but the relative ordering between variants should hold — that's what the iteration loop is buying us.
+
+## Files to know
+
+- `App.tsx` — `SHADER_SYSTEM_PROMPT` constant (line ~42) is the production prompt; `EVAL_WS_URL` (line ~308) is the cloudflared tunnel URL the phone connects to in client mode.
+- `eval_server/server.mjs` — WebSocket broker. `node eval_server/server.mjs` then `cloudflared tunnel --url http://localhost:9000` for the public URL.
+- `eval_server/run_*.{mjs,py}` — three runners.
+- `eval_server/analyze.mjs <results.jsonl> [...]` — score with real GLSL compile.
+- `eval_server/batches/*.json` — batch definitions; results land alongside as `<batch>.<runner>.results.jsonl`.
+- `eval_server/ground_truth.json` — hand-written reference shaders per concept for semantic comparison.
+
