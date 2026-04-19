@@ -51,13 +51,19 @@ import * as RNFS from '@dr.pogodin/react-native-fs';
 // give the h3 flag something to negotiate.
 if (__DEV__) {
   setModelUrlOverride('gemma-4-e2b-it', {
-    proApple: 'https://deepsteve.com/gemma-4-e2b-it-int4-apple.zip',
+    proApple: 'https://files.deepsteve.com/gemma-4-e2b-it-int4-apple.zip',
   });
 }
 import { CANNED_SHADERS } from './cannedShaders';
 
 const VISION_MODEL = 'gemma-4-e2b-it';
 
+// Prompt produced by the round-5 stacked-validation eval (see
+// SHADER_PROMPT_ANALYSIS.md). Adds two snippets to the round-3
+// baseline targeting the two largest compile-pass gaps (pixelate
+// 2/5 → 5/5 and thermal 2/5 → 5/5). Net +6 absolute on the 50-prompt
+// baseline (34 → 37), no significant regressions outside sampling
+// noise.
 const SHADER_SYSTEM_PROMPT = `You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.
 
 The shader runs over a photo. Declare these uniforms and the varying at the top of your output:
@@ -68,7 +74,23 @@ The shader runs over a photo. Declare these uniforms and the varying at the top 
   uniform vec2 u_resolution;     // pixel dimensions
   varying vec2 v_uv;             // texture coords, 0..1
 
-Write the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.`;
+Write the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.
+
+Reference snippet for grid/block effects (square cells):
+
+  vec2 cell = vec2(16.0) / u_resolution;
+  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;
+  vec3 color = texture2D(u_texture, snapped).rgb;
+
+Reference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):
+
+  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));
+  vec3 col;
+  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);
+  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);
+  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);
+  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);`;
 // pro: true → pulls the -apple.zip variant that bundles the .mlpackage Core ML files.
 // Without these, Cactus falls back to CPU prefill and the vision encoder; with a 2B
 // multimodal model that means `std::bad_alloc` on capture-sized inputs.
@@ -723,6 +745,22 @@ function CameraScreen({
   const { hasPermission, requestPermission } = useCameraPermission();
   const photoOutput = usePhotoOutput();
 
+  // Pin the download start time the first time a download goes active so
+  // the banner can show elapsed seconds (and rough throughput). Reset when
+  // the download finishes.
+  const [dlStartMs, setDlStartMs] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState(Date.now());
+  const isDownloadingAny = lm.isDownloading || stt.isDownloading;
+  useEffect(() => {
+    if (isDownloadingAny && dlStartMs == null) setDlStartMs(Date.now());
+    if (!isDownloadingAny) setDlStartMs(null);
+  }, [isDownloadingAny, dlStartMs]);
+  useEffect(() => {
+    if (!isDownloadingAny) return;
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isDownloadingAny]);
+
   const handleTake = useCallback(async () => {
     if (busy) return;
     setBusy(true);
@@ -776,15 +814,27 @@ function CameraScreen({
   // Surface the one-time model download so judges don't stare at a dead camera
   // on first launch. Gemma dominates (~1–2 hr); whisper finishes in seconds.
   // Cactus caches on disk, so subsequent launches skip this entirely.
+  const elapsedSec =
+    dlStartMs && isDownloadingAny ? Math.max(0, Math.floor((nowMs - dlStartMs) / 1000)) : 0;
+  const formatElapsed = (s: number) =>
+    s >= 60 ? `${Math.floor(s / 60)}m${String(s % 60).padStart(2, '0')}s` : `${s}s`;
+  const mbPerSec = (progress: number, totalBytes: number) => {
+    if (!dlStartMs || elapsedSec <= 0 || progress <= 0) return null;
+    const bytesDone = progress * totalBytes;
+    return bytesDone / elapsedSec / (1024 * 1024);
+  };
+
   const downloadBanner = !lm.isDownloaded
     ? {
         label: 'Downloading Gemma 4 E2B',
         progress: lm.downloadProgress ?? 0,
+        totalBytes: 4_679_429_616,
       }
     : !stt.isDownloaded
     ? {
         label: 'Downloading speech model',
         progress: stt.downloadProgress ?? 0,
+        totalBytes: 281_110_369,
       }
     : null;
 
@@ -843,6 +893,15 @@ function CameraScreen({
                 ]}
               />
             </View>
+            {dlStartMs ? (
+              <Text style={styles.downloadBannerMeta}>
+                {formatElapsed(elapsedSec)} elapsed
+                {(() => {
+                  const rate = mbPerSec(downloadBanner.progress, downloadBanner.totalBytes);
+                  return rate ? ` · ${rate.toFixed(1)} MB/s` : '';
+                })()}
+              </Text>
+            ) : null}
           </View>
         ) : (
           <View style={{ flex: 1 }} />

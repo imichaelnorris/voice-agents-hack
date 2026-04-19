@@ -1,8 +1,8 @@
 diff --git a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-index dd342cc..5bd3444 100644
+index dd342cc..7f88550 100644
 --- a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
 +++ b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-@@ -81,47 +81,172 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
+@@ -81,47 +81,201 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
          throw RuntimeError.error(withMessage: "Invalid URL")
        }
  
@@ -133,12 +133,30 @@ index dd342cc..5bd3444 100644
 +      return (start, end)
 +    }
 +
++    // Single shared URLSession across all chunks so HTTP/3 can multiplex
++    // the 6 range requests over one QUIC connection: handshake once, BBR
++    // ramps once, no stream-level HoL blocking. Creating one session per
++    // chunk meant 6 separate QUIC handshakes serialized behind each other,
++    // defeating the point of H3 and wasting the initial RTT × 6.
++    //
++    // Per-task delegates are iOS 15+. On iOS 14 fall back to the old
++    // per-chunk session approach (no H3 on 14 anyway, so the multiplexing
++    // win is moot there).
++    var sharedSession: URLSession? = nil
++    if #available(iOS 15.0, *) {
++      let config = URLSessionConfiguration.ephemeral
++      config.httpMaximumConnectionsPerHost = numChunks
++      sharedSession = URLSession(configuration: config)
++    }
++    defer { sharedSession?.finishTasksAndInvalidate() }
++
 +    do {
 +      try await withThrowingTaskGroup(of: Void.self) { group in
 +        for i in 0..<numChunks {
 +          let (startByte, endByte) = ranges[i]
 +          group.addTask {
 +            try await self.downloadOneChunk(
++              sharedSession: sharedSession,
 +              url: finalURL, start: startByte, end: endByte,
 +              writer: writer, progress: progress,
 +              chunkIndex: i, maxRetries: 3)
@@ -164,6 +182,7 @@ index dd342cc..5bd3444 100644
 +  }
 +
 +  private func downloadOneChunk(
++    sharedSession: URLSession?,
 +    url: URL, start: Int64, end: Int64,
 +    writer: SerialFileWriter, progress: ParallelProgressState,
 +    chunkIndex: Int, maxRetries: Int
@@ -171,16 +190,26 @@ index dd342cc..5bd3444 100644
 +    var attempt = 0
 +    while true {
 +      do {
-+        let config = URLSessionConfiguration.default
-+        config.httpMaximumConnectionsPerHost = 8
 +        let delegate = ChunkStreamDelegate(
 +          startOffset: start, expectedBytes: end - start + 1,
 +          writer: writer, progress: progress, chunkIndex: chunkIndex)
-+        let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
++        let session: URLSession
++        if let shared = sharedSession {
++          session = shared
++        } else {
++          // iOS 14 path: per-chunk session because per-task delegate is
++          // unavailable. Still correct, just doesn't share a connection.
++          let config = URLSessionConfiguration.default
++          config.httpMaximumConnectionsPerHost = 8
++          session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
++        }
 +        var req = URLRequest(url: url)
 +        req.setValue("bytes=\(start)-\(end)", forHTTPHeaderField: "Range")
 +        if #available(iOS 15.0, *) { req.assumesHTTP3Capable = true }
 +        let task = session.dataTask(with: req)
++        if #available(iOS 15.0, *), sharedSession != nil {
++          task.delegate = delegate
++        }
 +        try await delegate.awaitCompletion(for: task)
 +        return
 +      } catch {
@@ -200,7 +229,7 @@ index dd342cc..5bd3444 100644
    func deleteModel(model: String) throws -> Promise<Void> {
      return Promise.async {
        let modelURL = try self.modelURL(model: model)
-@@ -181,6 +306,199 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
+@@ -181,6 +335,199 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
    }
  }
  
@@ -400,7 +429,7 @@ index dd342cc..5bd3444 100644
  private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, URLSessionTaskDelegate
  {
    private let progressHandler: (Double) -> Void
-@@ -236,6 +554,25 @@ private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, UR
+@@ -236,6 +583,25 @@ private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, UR
      }
    }
    

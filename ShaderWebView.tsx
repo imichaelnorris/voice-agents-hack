@@ -138,6 +138,41 @@ function htmlFor(fragSrc: string, imageDataUri: string): string {
         }
         render();
 
+        // Hot-swap the fragment shader without reloading the WebView, so
+        // changing the shader prop doesn't flicker the raw photo between
+        // frames while HTML re-parses.
+        window.__updateShader = function(src){
+          try {
+            var newFs = compile(gl.FRAGMENT_SHADER, src);
+            var newProg = gl.createProgram();
+            gl.attachShader(newProg, vs);
+            gl.attachShader(newProg, newFs);
+            gl.linkProgram(newProg);
+            if (!gl.getProgramParameter(newProg, gl.LINK_STATUS)) {
+              throw new Error('Program link error:\\n' + gl.getProgramInfoLog(newProg));
+            }
+            var oldProg = prog, oldFs = fs;
+            prog = newProg;
+            fs = newFs;
+            gl.useProgram(prog);
+            aPos = gl.getAttribLocation(prog, 'a_position');
+            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+            gl.enableVertexAttribArray(aPos);
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+            uTex = gl.getUniformLocation(prog, 'u_texture');
+            uTime = gl.getUniformLocation(prog, 'u_time');
+            uRes = gl.getUniformLocation(prog, 'u_resolution');
+            if (uTex) gl.uniform1i(uTex, 0);
+            start = performance.now();
+            gl.deleteProgram(oldProg);
+            gl.deleteShader(oldFs);
+            var errEl = document.getElementById('err');
+            if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+          } catch (e) {
+            reportError(String(e && e.message || e));
+          }
+        };
+
         // Build a fresh offscreen GL context + program + photo texture at the
         // requested size. Used for still-frame capture and for video
         // recording, which need preserveDrawingBuffer and their own render
@@ -347,6 +382,10 @@ export const ShaderWebView = forwardRef<ShaderWebViewHandle, ShaderWebViewProps>
       reject: (e: Error) => void;
       timer: ReturnType<typeof setTimeout>;
     } | null>(null);
+    // Baked-in shader for the current HTML document. Only changed when we
+    // actually rebuild HTML (e.g. new photo); subsequent shader prop changes
+    // are hot-swapped via __updateShader so the WebView doesn't reload.
+    const bakedShaderRef = useRef<string>(shader);
 
     useEffect(() => {
       let cancelled = false;
@@ -370,8 +409,24 @@ export const ShaderWebView = forwardRef<ShaderWebViewHandle, ShaderWebViewProps>
 
     const html = useMemo(() => {
       if (!imageDataUri) return null;
+      // Use whatever shader is current at the moment HTML is built so photo
+      // changes pick up the latest shader; shader-only prop changes don't
+      // land here because the dep list omits `shader`.
+      bakedShaderRef.current = shader;
       return htmlFor(shader, imageDataUri);
-    }, [shader, imageDataUri]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [imageDataUri]);
+
+    useEffect(() => {
+      if (bakedShaderRef.current === shader) return;
+      const wv = webRef.current;
+      if (!wv) return;
+      const payload = JSON.stringify(shader);
+      wv.injectJavaScript(
+        `try{window.__updateShader && window.__updateShader(${payload});}catch(e){};true;`,
+      );
+      bakedShaderRef.current = shader;
+    }, [shader]);
 
     useImperativeHandle(
       ref,
@@ -500,5 +555,7 @@ export const ShaderWebView = forwardRef<ShaderWebViewHandle, ShaderWebViewProps>
 
 const styles = StyleSheet.create({
   webview: { backgroundColor: 'transparent' },
-  fallback: { backgroundColor: '#0f1114', alignItems: 'center', justifyContent: 'center' },
+  // Transparent so the raw photo behind remains visible while the file
+  // read + WebView boot finishes — avoids a dark flash on first mount.
+  fallback: { backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
 });
