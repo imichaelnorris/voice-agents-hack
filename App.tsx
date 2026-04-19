@@ -1089,8 +1089,28 @@ function PromptEvalScreen({ onBack, lm }: { onBack: () => void; lm: LmHook }) {
   const handleInferenceRequest = useCallback(
     async (req: EvalInferenceMsg) => {
       const ws = wsRef.current;
-      try {
-        const response = await runInference(req.prompt, req.systemPrompt, req.options);
+      // The hook-wrapped lm.complete() races on a React-state isGenerating
+      // closure: the chain serializes our requests, but the closure hasn't
+      // re-rendered between back-to-back chain entries, so the second call
+      // sees a stale "still generating" value and rejects. Retry with a
+      // small backoff to give React a chance to settle.
+      let response: string | null = null;
+      let lastErr: unknown = null;
+      for (let attempt = 0; attempt < 6; attempt++) {
+        try {
+          response = await runInference(req.prompt, req.systemPrompt, req.options);
+          break;
+        } catch (err) {
+          lastErr = err;
+          const msg = err instanceof Error ? err.message : String(err);
+          if (msg.includes('already generating')) {
+            await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
+            continue;
+          }
+          break;
+        }
+      }
+      if (response !== null) {
         ws?.send(
           JSON.stringify({ type: 'response', id: req.id, response }),
         );
@@ -1100,8 +1120,8 @@ function PromptEvalScreen({ onBack, lm }: { onBack: () => void; lm: LmHook }) {
             ...prev,
           ].slice(0, 50),
         );
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+      } else {
+        const message = lastErr instanceof Error ? lastErr.message : String(lastErr);
         ws?.send(
           JSON.stringify({ type: 'error', id: req.id, error: message }),
         );
@@ -1228,7 +1248,18 @@ function PromptEvalScreen({ onBack, lm }: { onBack: () => void; lm: LmHook }) {
 
         <Text style={styles.evalSectionLabel}>Client mode</Text>
         <Text style={styles.evalCaption}>
-          Receives inference requests for batch evals
+          Turns this phone into an on-device inference worker. A local Claude
+          Code agent on your laptop spawns a batch of shader prompts (to
+          test prompt and response quality), sends each one over the
+          WebSocket, and collects Gemma's output for scoring. Use this to
+          run evals against the quantized Cactus build you can't touch from
+          the laptop directly.
+        </Text>
+        <Text style={styles.evalCaption}>
+          1. On your laptop, cd into {`eval_server/ `}and start the server
+          (or the Claude Code agent that drives it).{'\n'}
+          2. Tap "Start client mode" below.{'\n'}
+          3. Trigger the batch from the laptop — results log here.
         </Text>
         {!lm.isDownloaded ? (
           <Text style={styles.evalCaption}>
