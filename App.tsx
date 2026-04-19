@@ -308,7 +308,7 @@ type Screen = 'camera' | 'review' | 'promptEval';
 // Cloudflared quick tunnel pointing at eval_server/server.mjs (localhost:9000).
 // Quick-tunnel URLs rotate every restart — update this string and rebuild
 // the app when the tunnel is restarted.
-const EVAL_WS_URL = 'wss://asus-too-aggregate-reported.trycloudflare.com';
+const EVAL_WS_URL = 'wss://fluid-bind-reload-calcium.trycloudflare.com';
 
 const DEFAULT_SHADER_PROMPT = `Write a complete GLSL ES 1.00 fragment shader that produces an interesting animated image.
 
