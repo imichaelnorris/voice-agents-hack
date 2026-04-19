@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
   Modal,
   PermissionsAndroid,
   Platform,
@@ -527,6 +528,24 @@ function ReviewScreen({
   const audioBuffer = useRef<number[]>([]);
   const dataSub = useRef<{ remove: () => void } | null>(null);
 
+  // Raise the text-input row above the keyboard when it appears. The row is
+  // absolutely positioned, so KeyboardAvoidingView can't do the work for us.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvt, e => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvt, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   useEffect(() => {
     AudioRecord.init(AUDIO_OPTS);
   }, []);
@@ -809,7 +828,15 @@ function ReviewScreen({
         })}
       </ScrollView>
 
-      <View style={[styles.inputRow, { bottom: insets.bottom + 130 }]}>
+      <View
+        style={[
+          styles.inputRow,
+          {
+            bottom:
+              keyboardHeight > 0 ? keyboardHeight + 12 : insets.bottom + 130,
+          },
+        ]}
+      >
         <TextInput
           value={typed}
           onChangeText={setTyped}
@@ -1123,6 +1150,11 @@ function PromptEvalScreen({ onBack, lm }: { onBack: () => void; lm: LmHook }) {
             <Text style={styles.evalPrimaryButtonText}>Produce shader example</Text>
           )}
         </Pressable>
+        {!lm.isDownloaded ? (
+          <Text style={styles.evalCaption}>
+            (need to install model before this is enabled)
+          </Text>
+        ) : null}
         {oneShotOutput ? (
           <View style={styles.evalOutputBox}>
             <Text selectable style={styles.evalOutputText}>
@@ -1138,6 +1170,11 @@ function PromptEvalScreen({ onBack, lm }: { onBack: () => void; lm: LmHook }) {
         <Text style={styles.evalCaption}>
           Receives inference requests for batch evals
         </Text>
+        {!lm.isDownloaded ? (
+          <Text style={styles.evalCaption}>
+            (need to install model before this is enabled)
+          </Text>
+        ) : null}
         <Pressable
           onPress={clientActive ? disconnectClient : connectClient}
           disabled={!lm.isDownloaded}
