@@ -31,21 +31,8 @@ import {
 import {
   useCactusLM,
   useCactusSTT,
-  setModelUrlOverride,
   type CactusLMMessage,
 } from 'cactus-react-native';
-
-// In __DEV__ we route the 4.68 GB apple zip through a Cloudflare quick
-// tunnel pointed at a local python http server on the Mac — both HF and
-// R2 were too slow from the hackathon WiFi. The tunnel URL changes every
-// time cloudflared restarts, so update this when your tunnel flips.
-// Release builds fall through to the registry's upstream HF URL.
-const DEV_GEMMA_APPLE_URL =
-  'https://donate-prefer-graphs-trades.trycloudflare.com/gemma-4-e2b-it-int4-apple.zip';
-
-if (__DEV__) {
-  setModelUrlOverride('gemma-4-e2b-it', { proApple: DEV_GEMMA_APPLE_URL });
-}
 import { ShaderWebView, extractShader } from './ShaderWebView';
 import { CANNED_SHADERS } from './cannedShaders';
 
