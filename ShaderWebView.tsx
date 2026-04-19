@@ -47,6 +47,7 @@ function htmlFor(fragSrc: string, imageDataUri: string): string {
   const safeFrag = JSON.stringify(fragSrc);
   const safeVert = JSON.stringify(VERTEX_SHADER);
   const safeImg = JSON.stringify(imageDataUri);
+  const safeAnimated = JSON.stringify(isShaderAnimated(fragSrc));
   return `<!DOCTYPE html>
 <html><head>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -129,14 +130,32 @@ function htmlFor(fragSrc: string, imageDataUri: string): string {
         gl.uniform1i(uTex, 0);
 
         var start = performance.now();
-        function render(){
+        var animated = ${safeAnimated};
+        function renderOnce(){
           gl.viewport(0, 0, canvas.width, canvas.height);
           if (uTime) gl.uniform1f(uTime, (performance.now() - start) / 1000);
           if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
           gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-          requestAnimationFrame(render);
         }
-        render();
+        function renderLoop(){
+          renderOnce();
+          if (animated) requestAnimationFrame(renderLoop);
+        }
+        renderLoop();
+        // Re-draw on resize so static shaders still adapt to viewport changes.
+        window.addEventListener('resize', function(){ renderOnce(); });
+
+        // Detect whether a shader is animated (reads u_time more than once,
+        // i.e. somewhere beyond its uniform declaration). Mirrors the JS-
+        // side isShaderAnimated() so hot-swaps re-evaluate without a round
+        // trip.
+        function isAnim(src){
+          var s = String(src || '')
+            .replace(/\\/\\*[\\s\\S]*?\\*\\//g, '')
+            .replace(/\\/\\/[^\\n]*/g, '');
+          var m = s.match(/\\bu_time\\b/g);
+          return !!(m && m.length > 1);
+        }
 
         // Hot-swap the fragment shader without reloading the WebView, so
         // changing the shader prop doesn't flicker the raw photo between
@@ -166,6 +185,19 @@ function htmlFor(fragSrc: string, imageDataUri: string): string {
             start = performance.now();
             gl.deleteProgram(oldProg);
             gl.deleteShader(oldFs);
+            var wasAnimated = animated;
+            animated = isAnim(src);
+            // Static→static or animated→animated: existing state is correct.
+            // Animated→static: the running rAF will see animated=false next
+            // tick and stop on its own; do one final draw to flush.
+            // Static→animated: no rAF was queued, kickstart the loop.
+            if (!wasAnimated && animated) {
+              renderLoop();
+            } else if (wasAnimated && !animated) {
+              renderOnce();
+            } else if (!animated) {
+              renderOnce();
+            }
             var errEl = document.getElementById('err');
             if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
           } catch (e) {

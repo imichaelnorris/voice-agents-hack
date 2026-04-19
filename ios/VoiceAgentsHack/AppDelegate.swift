@@ -40,12 +40,14 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 
   override func bundleURL() -> URL? {
 #if DEBUG
-    let provider = RCTBundleURLProvider.sharedSettings()
-    provider.jsLocation = "saggy-barbecue-lisp.ngrok-free.dev:443"
-    provider.packagerScheme = "https"
-    return provider.jsBundleURL(forBundleRoot: "index")
+    let url = RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
+    NSLog("🟣 BUNDLE_URL_DEBUG: %@", url?.absoluteString ?? "nil")
+    NSLog("🟣 BUNDLE_URL_jsLocation: %@", RCTBundleURLProvider.sharedSettings().jsLocation ?? "nil")
+    return url
 #else
-    return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+    let url = Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+    NSLog("🟣 BUNDLE_URL_RELEASE: %@", url?.absoluteString ?? "nil")
+    return url
 #endif
   }
 }

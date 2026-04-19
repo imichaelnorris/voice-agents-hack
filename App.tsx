@@ -283,6 +283,58 @@ function SendIcon({ color = '#fff', size = 22 }: { color?: string; size?: number
   );
 }
 
+function RefreshIcon({ color = '#fff', size = 22 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M20 12a8 8 0 1 1-2.34-5.66"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M20 4v4h-4"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function ExpandIcon({ color = '#fff', size = 18 }: { color?: string; size?: number }) {
+  // Two diagonal arrows pointing outward (NE + SW) — the standard
+  // "expand to fullscreen" affordance.
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M14 10l6-6M20 4v5M20 4h-5M10 14l-6 6M4 20v-5M4 20h5"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function CollapseIcon({ color = '#fff', size = 18 }: { color?: string; size?: number }) {
+  // Mirror of ExpandIcon — arrows pointing inward.
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M20 4l-6 6M14 10v-5M14 10h5M4 20l6-6M10 14v5M10 14h-5"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 function CopyIcon({ color = '#fff', size = 22 }: { color?: string; size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -1037,6 +1089,11 @@ function ReviewScreen({
   const [showShader, setShowShader] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [typed, setTyped] = useState('');
+  // Output text starts collapsed (tiny pill at the top showing just the
+  // status / last-line teaser); tap to expand into the full streaming
+  // transcript + Gemma response.
+  const [isOutputExpanded, setIsOutputExpanded] = useState(false);
+  const outputScrollRef = useRef<ScrollView>(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const [downloadStartMs, setDownloadStartMs] = useState<number | null>(null);
   useEffect(() => {
@@ -1323,7 +1380,6 @@ function ReviewScreen({
     setError(null);
     setTranscript(trimmed);
     setResponse('');
-    setTyped('');
     setManualShader(null);
     askGemma(trimmed);
   }, [typed, askGemma, isGenerating, isFinalizing, isRecording]);
@@ -1423,13 +1479,7 @@ function ReviewScreen({
 
   return (
     <View style={styles.screen}>
-      {/* DIAGNOSTIC: photo background and ShaderWebView fully removed to
-          test whether the decoded UIImage (held by RCTImageLoader's cache)
-          is what tips the process past jetsam during lm.complete on this
-          screen. Eval screen runs the same prompt at ~1.4 GB; review
-          screen with the same prompt OOMs. If inference now completes
-          here too, the on-screen Image is the cause. */}
-      {false && photoUri && !isGenerating ? (
+      {photoUri ? (
         photoFrame ? (
           <View style={[styles.photoFrame, photoFrame]}>
             <Image
@@ -1466,58 +1516,86 @@ function ReviewScreen({
       </Pressable>
 
       <Pressable
-        onPress={() => setShowShader(true)}
-        disabled={!shaderSource}
-        hitSlop={12}
-        style={[
-          styles.shaderButton,
-          { top: insets.top + 60 },
-          !shaderSource && styles.shaderButtonDisabled,
-        ]}
-      >
-        <CodeIcon color="#fff" size={16} />
-        <Text style={styles.shaderButtonText}>View shader</Text>
-      </Pressable>
-
-      <ScrollView
+        onPress={() => setIsOutputExpanded(v => !v)}
         style={[styles.outputBox, { marginTop: insets.top + 12 }]}
-        contentContainerStyle={styles.outputContent}
       >
-        {lm.isDownloading ? (
-          <View style={styles.raceCard}>
-            <Text style={styles.raceTitle}>
-              Downloading Gemma 4 E2B —{' '}
-              {downloadStartMs
-                ? `${Math.floor((nowMs - downloadStartMs) / 1000)}s elapsed`
-                : '…'}
+        <View
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            padding: 6,
+            zIndex: 1,
+          }}
+          pointerEvents="none"
+        >
+          {isOutputExpanded ? (
+            <CollapseIcon color="#9ba1a6" size={14} />
+          ) : (
+            <ExpandIcon color="#9ba1a6" size={14} />
+          )}
+        </View>
+        <ScrollView
+          ref={outputScrollRef}
+          contentContainerStyle={styles.outputContent}
+          scrollEnabled={isOutputExpanded}
+          showsVerticalScrollIndicator={isOutputExpanded}
+          onContentSizeChange={() => {
+            // Keep the latest streamed token visible when expanded —
+            // ScrollView default-anchors to the top, so a streaming response
+            // would otherwise pin the first line. Skip when collapsed since
+            // there's nothing to scroll.
+            if (isOutputExpanded) outputScrollRef.current?.scrollToEnd({ animated: false });
+          }}
+        >
+          {lm.isDownloading ? (
+            <View style={styles.raceCard}>
+              <Text style={styles.raceTitle}>
+                Downloading Gemma 4 E2B —{' '}
+                {downloadStartMs
+                  ? `${Math.floor((nowMs - downloadStartMs) / 1000)}s elapsed`
+                  : '…'}
+              </Text>
+              <RaceBar
+                label="4.68 GB"
+                progress={lm.downloadProgress ?? 0}
+                timeMs={null}
+                isWinner={false}
+                raceDone={false}
+              />
+            </View>
+          ) : null}
+          {statusLine && !lm.isDownloading ? (
+            <Text style={styles.statusText} numberOfLines={isOutputExpanded ? 0 : 1}>
+              {statusLine}
             </Text>
-            <RaceBar
-              label="4.68 GB"
-              progress={lm.downloadProgress ?? 0}
-              timeMs={null}
-              isWinner={false}
-              raceDone={false}
-            />
-          </View>
-        ) : null}
-        {statusLine && !lm.isDownloading ? (
-          <Text style={styles.statusText}>{statusLine}</Text>
-        ) : null}
-        {transcript ? (
-          <Text style={styles.transcriptText}>
-            <Text style={styles.transcriptLabel}>You: </Text>
-            {transcript}
-          </Text>
-        ) : null}
-        {response ? (
-          <Text style={styles.responseText}>
-            <Text style={styles.responseLabel}>Gemma: </Text>
-            {response}
-            {isGenerating ? <Text style={styles.cursor}>▍</Text> : null}
-          </Text>
-        ) : null}
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      </ScrollView>
+          ) : null}
+          {transcript ? (
+            <Text
+              style={styles.transcriptText}
+              numberOfLines={isOutputExpanded ? 0 : 1}
+            >
+              <Text style={styles.transcriptLabel}>You: </Text>
+              {transcript}
+            </Text>
+          ) : null}
+          {response ? (
+            <Text
+              style={styles.responseText}
+              numberOfLines={isOutputExpanded ? 0 : 1}
+            >
+              <Text style={styles.responseLabel}>Gemma: </Text>
+              {response}
+              {isGenerating ? <Text style={styles.cursor}>▍</Text> : null}
+            </Text>
+          ) : null}
+          {error ? (
+            <Text style={styles.errorText} numberOfLines={isOutputExpanded ? 0 : 1}>
+              {error}
+            </Text>
+          ) : null}
+        </ScrollView>
+      </Pressable>
 
       <ScrollView
         horizontal
@@ -1584,7 +1662,11 @@ function ReviewScreen({
           ]}
           hitSlop={8}
         >
-          <SendIcon color="#fff" size={20} />
+          {keyboardHeight === 0 && typed.trim() ? (
+            <RefreshIcon color="#fff" size={20} />
+          ) : (
+            <SendIcon color="#fff" size={20} />
+          )}
         </Pressable>
       </View>
 
