@@ -63,6 +63,8 @@ See [`HACKATHON.md`](HACKATHON.md) for:
 - Running Metro from behind a hostile network (ngrok tunnel + AppDelegate wiring).
 - Full writeup of the `cactus-react-native` patch (registry fixes + parallel-Range downloader).
 
+See [`eval_server/README.md`](eval_server/README.md) for running prompt-eval batches against the phone's on-device Gemma (broker + cloudflared tunnel + per-concept hill climbs).
+
 ---
 
 ## Upstream context (from cactus-compute/voice-agents-hack)

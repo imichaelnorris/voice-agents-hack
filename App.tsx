@@ -1785,7 +1785,15 @@ function ReviewScreen({
     <View style={styles.screen}>
       {photoUri ? (
         photoFrame ? (
-          <View style={[styles.photoFrame, photoFrame]}>
+          // Pressable instead of plain View so a tap anywhere on the
+          // photo dismisses the keyboard. ShaderWebView is
+          // pointerEvents="none" and Image has no onPress, so taps fall
+          // through to this Pressable. When the keyboard is closed,
+          // Keyboard.dismiss is a no-op.
+          <Pressable
+            style={[styles.photoFrame, photoFrame]}
+            onPress={Keyboard.dismiss}
+          >
             <Image
               source={{ uri: photoUri }}
               style={StyleSheet.absoluteFill}
@@ -1800,13 +1808,18 @@ function ReviewScreen({
                 onError={msg => setError(`Shader: ${msg}`)}
               />
             ) : null}
-          </View>
+          </Pressable>
         ) : (
-          <Image
-            source={{ uri: photoUri }}
+          <Pressable
             style={StyleSheet.absoluteFill}
-            resizeMode="contain"
-          />
+            onPress={Keyboard.dismiss}
+          >
+            <Image
+              source={{ uri: photoUri }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="contain"
+            />
+          </Pressable>
         )
       ) : null}
       <View style={[StyleSheet.absoluteFill, styles.scrim]} />
