@@ -47,8 +47,8 @@ import * as RNFS from '@dr.pogodin/react-native-fs';
 
 // Route Gemma 4 E2B apple zip through Cloudflare. S3 (HF's origin) doesn't
 // speak HTTP/3, so assumesHTTP3Capable was a no-op there — metrics showed
-// proto=http/1.1. CF does advertise h3, so pointing at deepsteve.com should
-// give the h3 flag something to negotiate.
+// proto=http/1.1. CF does advertise h3, so pointing at deepsteve.com gives
+// the h3 flag something to negotiate.
 if (__DEV__) {
   setModelUrlOverride('gemma-4-e2b-it', {
     proApple: 'https://files.deepsteve.com/gemma-4-e2b-it-int4-apple.zip',
@@ -2083,6 +2083,11 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#f5f7fa',
     borderRadius: 2,
+  },
+  downloadBannerMeta: {
+    color: '#9ba1a6',
+    fontSize: 11,
+    fontVariant: ['tabular-nums'],
   },
 
   cameraBottomBar: {

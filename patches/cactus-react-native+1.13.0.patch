@@ -1,5 +1,5 @@
 diff --git a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-index dd342cc..7f88550 100644
+index dd342cc..dcf5fe7 100644
 --- a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
 +++ b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
 @@ -81,47 +81,201 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
@@ -229,7 +229,7 @@ index dd342cc..7f88550 100644
    func deleteModel(model: String) throws -> Promise<Void> {
      return Promise.async {
        let modelURL = try self.modelURL(model: model)
-@@ -181,6 +335,199 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
+@@ -181,6 +335,225 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
    }
  }
  
@@ -291,6 +291,13 @@ index dd342cc..7f88550 100644
 +  private var lastPct: Double = -1
 +  private let intervalSec: TimeInterval = 0.25
 +
++  // Real-time throughput logging — prints aggregate MB/s every ~2s so the
++  // Xcode console reveals speed without waiting for chunks to complete.
++  private let startedAt: TimeInterval = CACurrentMediaTime()
++  private var lastLoggedAt: TimeInterval = 0
++  private var lastLoggedBytes: Int64 = 0
++  private let logIntervalSec: TimeInterval = 2.0
++
 +  init(total: Int64, callback: ((Double) -> Void)?) {
 +    self.total = total
 +    self.callback = callback
@@ -301,6 +308,25 @@ index dd342cc..7f88550 100644
 +      self.bytesDone += bytes
 +      self.perChunk[chunkIndex, default: 0] += bytes
 +      let now = CACurrentMediaTime()
++
++      // Throughput log — independent of pct emit.
++      if now - self.lastLoggedAt >= self.logIntervalSec {
++        let deltaBytes = self.bytesDone - self.lastLoggedBytes
++        let deltaSec = now - (self.lastLoggedAt == 0 ? self.startedAt : self.lastLoggedAt)
++        let mbps = deltaSec > 0 ? Double(deltaBytes) / deltaSec / (1024 * 1024) : 0
++        let avgMbps =
++          Double(self.bytesDone) / max(0.001, now - self.startedAt) / (1024 * 1024)
++        let pctNow = Double(self.bytesDone) / Double(self.total) * 100
++        print(String(
++          format: "[cactus.dl.parallel.rate] %.1f%% done=%.1fMB inst=%.1fMB/s avg=%.1fMB/s",
++          pctNow,
++          Double(self.bytesDone) / (1024 * 1024),
++          mbps,
++          avgMbps))
++        self.lastLoggedAt = now
++        self.lastLoggedBytes = self.bytesDone
++      }
++
 +      if now - self.lastEmittedAt < self.intervalSec { return }
 +      let pct = floor(Double(self.bytesDone) / Double(self.total) * 99) / 100
 +      if pct - self.lastPct < 0.01 { return }
@@ -429,7 +455,7 @@ index dd342cc..7f88550 100644
  private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, URLSessionTaskDelegate
  {
    private let progressHandler: (Double) -> Void
-@@ -236,6 +583,25 @@ private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, UR
+@@ -236,6 +609,25 @@ private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, UR
      }
    }
    
