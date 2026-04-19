@@ -13,7 +13,7 @@ Snap a photo, hold the mic, describe the look you want. **Gemma 4 E2B** writes a
 3. Hold the mic and say what you want — *"sepia"*, *"thermal cam"*, *"chromatic aberration"*, anything.
 4. Gemma 4 E2B transcribes the audio (its own multimodal audio path), writes the GLSL, and a WebView compiles + renders the shader over the photo in real time.
 
-For the safe-demo path: 9 hand-tuned canned shader chips at the bottom (Invert, CRT, Underwater, Vignette, Neon, Sepia, X-Pro 2, Overexposure, …) bypass Gemma entirely and render instantly.
+A row of curated effect chips along the bottom (Invert, CRT, Underwater, Vignette, Neon, Sepia, X-Pro 2, Overexposure, …) gives you one-tap access to hand-tuned shaders alongside the open-ended voice path.
 
 ## Deliverables
 
