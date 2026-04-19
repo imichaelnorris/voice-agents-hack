@@ -6,6 +6,8 @@ Take a photo, hold the mic, say what you want the photo to look like. The on-dev
 
 The hackathon frame is in the cactus-compute [voice-agents-hack brief](https://github.com/cactus-compute/voice-agents-hack) (preserved at the bottom of this file for reference). This repo is a fork.
 
+> Tested on iPhone 17 Pro only. Other devices (including iPad) are untested.
+
 ## Stages
 
 The work is broken into three stages. Stage 0 is the working app. Stage 1 is the research core. Stage 2 is the generalizable artifact.
