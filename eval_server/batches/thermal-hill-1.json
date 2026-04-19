@@ -1,0 +1,309 @@
+{
+  "_comment": "Thermal hill climb 1: 5 variants × 10 runs. Targets the \"no idea what a thermal LUT looks like\" failure — model invents nonsense channel arithmetic.",
+  "options": {
+    "temperature": 0.7,
+    "maxTokens": 1024
+  },
+  "prompts": [
+    {
+      "id": "T0-baseline-r1",
+      "label": "T0-baseline",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T0-baseline-r2",
+      "label": "T0-baseline",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T0-baseline-r3",
+      "label": "T0-baseline",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T0-baseline-r4",
+      "label": "T0-baseline",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T0-baseline-r5",
+      "label": "T0-baseline",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T0-baseline-r6",
+      "label": "T0-baseline",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T0-baseline-r7",
+      "label": "T0-baseline",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T0-baseline-r8",
+      "label": "T0-baseline",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T0-baseline-r9",
+      "label": "T0-baseline",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T0-baseline-r10",
+      "label": "T0-baseline",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T1-rule-r1",
+      "label": "T1-rule",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for false-color/thermal effects: compute luminance = dot(rgb, vec3(0.2126, 0.7152, 0.0722)), then piecewise mix() through the color stops. Don't do per-channel arithmetic."
+    },
+    {
+      "id": "T1-rule-r2",
+      "label": "T1-rule",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for false-color/thermal effects: compute luminance = dot(rgb, vec3(0.2126, 0.7152, 0.0722)), then piecewise mix() through the color stops. Don't do per-channel arithmetic."
+    },
+    {
+      "id": "T1-rule-r3",
+      "label": "T1-rule",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for false-color/thermal effects: compute luminance = dot(rgb, vec3(0.2126, 0.7152, 0.0722)), then piecewise mix() through the color stops. Don't do per-channel arithmetic."
+    },
+    {
+      "id": "T1-rule-r4",
+      "label": "T1-rule",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for false-color/thermal effects: compute luminance = dot(rgb, vec3(0.2126, 0.7152, 0.0722)), then piecewise mix() through the color stops. Don't do per-channel arithmetic."
+    },
+    {
+      "id": "T1-rule-r5",
+      "label": "T1-rule",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for false-color/thermal effects: compute luminance = dot(rgb, vec3(0.2126, 0.7152, 0.0722)), then piecewise mix() through the color stops. Don't do per-channel arithmetic."
+    },
+    {
+      "id": "T1-rule-r6",
+      "label": "T1-rule",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for false-color/thermal effects: compute luminance = dot(rgb, vec3(0.2126, 0.7152, 0.0722)), then piecewise mix() through the color stops. Don't do per-channel arithmetic."
+    },
+    {
+      "id": "T1-rule-r7",
+      "label": "T1-rule",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for false-color/thermal effects: compute luminance = dot(rgb, vec3(0.2126, 0.7152, 0.0722)), then piecewise mix() through the color stops. Don't do per-channel arithmetic."
+    },
+    {
+      "id": "T1-rule-r8",
+      "label": "T1-rule",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for false-color/thermal effects: compute luminance = dot(rgb, vec3(0.2126, 0.7152, 0.0722)), then piecewise mix() through the color stops. Don't do per-channel arithmetic."
+    },
+    {
+      "id": "T1-rule-r9",
+      "label": "T1-rule",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for false-color/thermal effects: compute luminance = dot(rgb, vec3(0.2126, 0.7152, 0.0722)), then piecewise mix() through the color stops. Don't do per-channel arithmetic."
+    },
+    {
+      "id": "T1-rule-r10",
+      "label": "T1-rule",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for false-color/thermal effects: compute luminance = dot(rgb, vec3(0.2126, 0.7152, 0.0722)), then piecewise mix() through the color stops. Don't do per-channel arithmetic."
+    },
+    {
+      "id": "T2-snippet-r1",
+      "label": "T2-snippet",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):\n\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);"
+    },
+    {
+      "id": "T2-snippet-r2",
+      "label": "T2-snippet",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):\n\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);"
+    },
+    {
+      "id": "T2-snippet-r3",
+      "label": "T2-snippet",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):\n\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);"
+    },
+    {
+      "id": "T2-snippet-r4",
+      "label": "T2-snippet",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):\n\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);"
+    },
+    {
+      "id": "T2-snippet-r5",
+      "label": "T2-snippet",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):\n\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);"
+    },
+    {
+      "id": "T2-snippet-r6",
+      "label": "T2-snippet",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):\n\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);"
+    },
+    {
+      "id": "T2-snippet-r7",
+      "label": "T2-snippet",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):\n\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);"
+    },
+    {
+      "id": "T2-snippet-r8",
+      "label": "T2-snippet",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):\n\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);"
+    },
+    {
+      "id": "T2-snippet-r9",
+      "label": "T2-snippet",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):\n\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);"
+    },
+    {
+      "id": "T2-snippet-r10",
+      "label": "T2-snippet",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):\n\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);"
+    },
+    {
+      "id": "T3-fullshader-r1",
+      "label": "T3-fullshader",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a thermal/heatmap effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "T3-fullshader-r2",
+      "label": "T3-fullshader",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a thermal/heatmap effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "T3-fullshader-r3",
+      "label": "T3-fullshader",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a thermal/heatmap effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "T3-fullshader-r4",
+      "label": "T3-fullshader",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a thermal/heatmap effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "T3-fullshader-r5",
+      "label": "T3-fullshader",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a thermal/heatmap effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "T3-fullshader-r6",
+      "label": "T3-fullshader",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a thermal/heatmap effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "T3-fullshader-r7",
+      "label": "T3-fullshader",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a thermal/heatmap effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "T3-fullshader-r8",
+      "label": "T3-fullshader",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a thermal/heatmap effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "T3-fullshader-r9",
+      "label": "T3-fullshader",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a thermal/heatmap effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "T3-fullshader-r10",
+      "label": "T3-fullshader",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a thermal/heatmap effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "T4-rephrase-r1",
+      "label": "T4-rephrase",
+      "prompt": "compute luminance = dot(rgb, vec3(0.2126,0.7152,0.0722)) of each pixel, then map it through a piecewise-linear color ramp using mix() — black 0.0 → blue 0.25 → purple 0.5 → red 0.75 → yellow 1.0",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T4-rephrase-r2",
+      "label": "T4-rephrase",
+      "prompt": "compute luminance = dot(rgb, vec3(0.2126,0.7152,0.0722)) of each pixel, then map it through a piecewise-linear color ramp using mix() — black 0.0 → blue 0.25 → purple 0.5 → red 0.75 → yellow 1.0",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T4-rephrase-r3",
+      "label": "T4-rephrase",
+      "prompt": "compute luminance = dot(rgb, vec3(0.2126,0.7152,0.0722)) of each pixel, then map it through a piecewise-linear color ramp using mix() — black 0.0 → blue 0.25 → purple 0.5 → red 0.75 → yellow 1.0",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T4-rephrase-r4",
+      "label": "T4-rephrase",
+      "prompt": "compute luminance = dot(rgb, vec3(0.2126,0.7152,0.0722)) of each pixel, then map it through a piecewise-linear color ramp using mix() — black 0.0 → blue 0.25 → purple 0.5 → red 0.75 → yellow 1.0",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T4-rephrase-r5",
+      "label": "T4-rephrase",
+      "prompt": "compute luminance = dot(rgb, vec3(0.2126,0.7152,0.0722)) of each pixel, then map it through a piecewise-linear color ramp using mix() — black 0.0 → blue 0.25 → purple 0.5 → red 0.75 → yellow 1.0",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T4-rephrase-r6",
+      "label": "T4-rephrase",
+      "prompt": "compute luminance = dot(rgb, vec3(0.2126,0.7152,0.0722)) of each pixel, then map it through a piecewise-linear color ramp using mix() — black 0.0 → blue 0.25 → purple 0.5 → red 0.75 → yellow 1.0",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T4-rephrase-r7",
+      "label": "T4-rephrase",
+      "prompt": "compute luminance = dot(rgb, vec3(0.2126,0.7152,0.0722)) of each pixel, then map it through a piecewise-linear color ramp using mix() — black 0.0 → blue 0.25 → purple 0.5 → red 0.75 → yellow 1.0",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T4-rephrase-r8",
+      "label": "T4-rephrase",
+      "prompt": "compute luminance = dot(rgb, vec3(0.2126,0.7152,0.0722)) of each pixel, then map it through a piecewise-linear color ramp using mix() — black 0.0 → blue 0.25 → purple 0.5 → red 0.75 → yellow 1.0",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T4-rephrase-r9",
+      "label": "T4-rephrase",
+      "prompt": "compute luminance = dot(rgb, vec3(0.2126,0.7152,0.0722)) of each pixel, then map it through a piecewise-linear color ramp using mix() — black 0.0 → blue 0.25 → purple 0.5 → red 0.75 → yellow 1.0",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "T4-rephrase-r10",
+      "label": "T4-rephrase",
+      "prompt": "compute luminance = dot(rgb, vec3(0.2126,0.7152,0.0722)) of each pixel, then map it through a piecewise-linear color ramp using mix() — black 0.0 → blue 0.25 → purple 0.5 → red 0.75 → yellow 1.0",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    }
+  ]
+}

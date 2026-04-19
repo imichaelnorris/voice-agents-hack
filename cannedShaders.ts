@@ -32,7 +32,9 @@ void main() {
   gl_FragColor = color;
 }`,
 
-  // Round 2, gemma4:e2b — uses mix() and multiplicative caustic to avoid blowout.
+  // Hand-tuned. Adds UV-space ripple distortion on top of the Round-2 caustic
+  // so the whole image sways — the original sampled static UVs and only the
+  // brightness wobbled, which read as near-static on a photo.
   Underwater: `precision mediump float;
 uniform sampler2D u_texture;
 uniform float u_time;
@@ -40,12 +42,18 @@ uniform vec2 u_resolution;
 varying vec2 v_uv;
 
 void main() {
-  vec4 color = texture2D(u_texture, v_uv);
+  // Two-axis ripple distortion of the sample coords.
+  float rx = sin(v_uv.y * 18.0 + u_time * 2.8) * 0.012;
+  float ry = cos(v_uv.x * 14.0 + u_time * 2.2) * 0.012;
+  vec2 uv = v_uv + vec2(rx, ry);
+  vec4 color = texture2D(u_texture, uv);
   vec3 underwater_color = mix(color.rgb, vec3(0.1, 0.3, 0.5), 0.5);
-  float wave1 = sin(v_uv.x * 10.0 + u_time * 2.0) * 0.5 + 0.5;
-  float wave2 = cos(v_uv.y * 10.0 + u_time * 3.0) * 0.5 + 0.5;
+  // Faster, higher-frequency caustics with a cross-term so the pattern drifts
+  // rather than pulsing in place.
+  float wave1 = sin(uv.x * 14.0 + uv.y * 6.0 + u_time * 3.2) * 0.5 + 0.5;
+  float wave2 = cos(uv.y * 12.0 - uv.x * 4.0 + u_time * 4.1) * 0.5 + 0.5;
   float caustic_pattern = (wave1 + wave2) * 0.5;
-  vec3 final_color = underwater_color * (1.0 + caustic_pattern * 0.5);
+  vec3 final_color = underwater_color * (0.85 + caustic_pattern * 0.9);
   gl_FragColor = vec4(final_color, color.a);
 }`,
 

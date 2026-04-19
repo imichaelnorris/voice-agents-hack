@@ -1,7 +1,26 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ActivityIndicator, StyleSheet, View, type ViewStyle } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as RNFS from '@dr.pogodin/react-native-fs';
+
+// Static heuristic: a shader is "animated" if it reads u_time somewhere
+// beyond its uniform declaration. Comments are stripped first so a commented-
+// out reference doesn't flip the flag.
+export function isShaderAnimated(src: string): boolean {
+  if (!src) return false;
+  const stripped = src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '');
+  const matches = stripped.match(/\bu_time\b/g);
+  return (matches?.length ?? 0) > 1;
+}
 
 // Pull a fragment shader source out of whatever Gemma emits — handles
 // fenced markdown, leading prose, and the bare-source happy path.
@@ -32,7 +51,7 @@ function htmlFor(fragSrc: string, imageDataUri: string): string {
 <html><head>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
+  html, body { margin: 0; padding: 0; height: 100%; background: transparent; overflow: hidden; }
   canvas { display: block; width: 100%; height: 100%; }
   #err { position: fixed; left: 0; right: 0; bottom: 0; max-height: 50%; overflow: auto; color: #f87171; background: rgba(0,0,0,0.85); padding: 8px; font: 11px ui-monospace, monospace; white-space: pre-wrap; display: none; }
 </style></head>
@@ -118,6 +137,169 @@ function htmlFor(fragSrc: string, imageDataUri: string): string {
           requestAnimationFrame(render);
         }
         render();
+
+        // Build a fresh offscreen GL context + program + photo texture at the
+        // requested size. Used for still-frame capture and for video
+        // recording, which need preserveDrawingBuffer and their own render
+        // target independent of the visible canvas.
+        function setupOffscreen(w, h){
+          var off = document.createElement('canvas');
+          off.width = w; off.height = h;
+          var og = off.getContext('webgl', { preserveDrawingBuffer: true, antialias: true });
+          if (!og) throw new Error('Offscreen WebGL unavailable');
+          function ocompile(type, src){
+            var s = og.createShader(type);
+            og.shaderSource(s, src);
+            og.compileShader(s);
+            if (!og.getShaderParameter(s, og.COMPILE_STATUS)) {
+              throw new Error((type === og.FRAGMENT_SHADER ? 'Fragment' : 'Vertex') + ' compile:\\n' + og.getShaderInfoLog(s));
+            }
+            return s;
+          }
+          var ovs = ocompile(og.VERTEX_SHADER, ${safeVert});
+          var ofs = ocompile(og.FRAGMENT_SHADER, ${safeFrag});
+          var oprog = og.createProgram();
+          og.attachShader(oprog, ovs);
+          og.attachShader(oprog, ofs);
+          og.linkProgram(oprog);
+          if (!og.getProgramParameter(oprog, og.LINK_STATUS)) {
+            throw new Error('Link:\\n' + og.getProgramInfoLog(oprog));
+          }
+          og.useProgram(oprog);
+          var obuf = og.createBuffer();
+          og.bindBuffer(og.ARRAY_BUFFER, obuf);
+          og.bufferData(og.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), og.STATIC_DRAW);
+          var oaPos = og.getAttribLocation(oprog, 'a_position');
+          og.enableVertexAttribArray(oaPos);
+          og.vertexAttribPointer(oaPos, 2, og.FLOAT, false, 0, 0);
+          var otex = og.createTexture();
+          og.bindTexture(og.TEXTURE_2D, otex);
+          og.pixelStorei(og.UNPACK_FLIP_Y_WEBGL, false);
+          og.texImage2D(og.TEXTURE_2D, 0, og.RGBA, og.RGBA, og.UNSIGNED_BYTE, img);
+          og.texParameteri(og.TEXTURE_2D, og.TEXTURE_WRAP_S, og.CLAMP_TO_EDGE);
+          og.texParameteri(og.TEXTURE_2D, og.TEXTURE_WRAP_T, og.CLAMP_TO_EDGE);
+          og.texParameteri(og.TEXTURE_2D, og.TEXTURE_MIN_FILTER, og.LINEAR);
+          og.texParameteri(og.TEXTURE_2D, og.TEXTURE_MAG_FILTER, og.LINEAR);
+          og.activeTexture(og.TEXTURE0);
+          og.uniform1i(og.getUniformLocation(oprog, 'u_texture'), 0);
+          return {
+            canvas: off, gl: og, prog: oprog, w: w, h: h,
+            uTime: og.getUniformLocation(oprog, 'u_time'),
+            uRes: og.getUniformLocation(oprog, 'u_resolution')
+          };
+        }
+
+        // One-shot PNG at the photo's native resolution.
+        window.__captureFrame = function(){
+          try {
+            var w = img.naturalWidth || img.width;
+            var h = img.naturalHeight || img.height;
+            if (!w || !h) throw new Error('Image not ready');
+            var s = setupOffscreen(w, h);
+            if (s.uTime) s.gl.uniform1f(s.uTime, (performance.now() - start) / 1000);
+            if (s.uRes) s.gl.uniform2f(s.uRes, w, h);
+            s.gl.viewport(0, 0, w, h);
+            s.gl.drawArrays(s.gl.TRIANGLE_STRIP, 0, 4);
+            var url = s.canvas.toDataURL('image/png');
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({type:'capture', data: url}));
+            }
+          } catch (e) {
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({type:'capture_error', msg: String(e && e.message || e)}));
+            }
+          }
+        };
+
+        // Record the offscreen canvas for durationMs via MediaRecorder. The
+        // encoder tops out on huge canvases, so the long side is capped at
+        // 1920 while preserving aspect. u_time resets to 0 at record start so
+        // the clip plays from the beginning of the animation.
+        window.__captureVideo = function(durationMs){
+          try {
+            if (typeof MediaRecorder === 'undefined') {
+              throw new Error('MediaRecorder not supported in this WebView');
+            }
+            var w = img.naturalWidth || img.width;
+            var h = img.naturalHeight || img.height;
+            if (!w || !h) throw new Error('Image not ready');
+            var MAX_SIDE = 1920;
+            var scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+            w = Math.max(2, Math.floor(w * scale));
+            h = Math.max(2, Math.floor(h * scale));
+            var s = setupOffscreen(w, h);
+
+            var stream = s.canvas.captureStream(30);
+            var candidates = [
+              'video/mp4;codecs=avc1',
+              'video/mp4',
+              'video/webm;codecs=vp9',
+              'video/webm;codecs=vp8',
+              'video/webm'
+            ];
+            var mime = '';
+            for (var i = 0; i < candidates.length; i++) {
+              if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(candidates[i])) {
+                mime = candidates[i]; break;
+              }
+            }
+            if (!mime) throw new Error('No supported video MIME type');
+            var rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6000000 });
+            var chunks = [];
+            rec.ondataavailable = function(e){ if (e.data && e.data.size) chunks.push(e.data); };
+            rec.onerror = function(ev){
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify({type:'video_error', msg: String((ev && ev.error && ev.error.message) || 'recorder error')}));
+              }
+            };
+            rec.onstop = function(){
+              try {
+                var blob = new Blob(chunks, { type: mime.split(';')[0] });
+                var reader = new FileReader();
+                reader.onloadend = function(){
+                  var dataUrl = String(reader.result || '');
+                  var base64 = dataUrl.split(',')[1] || '';
+                  if (window.ReactNativeWebView) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({type:'video', mime: mime.split(';')[0], data: base64}));
+                  }
+                };
+                reader.onerror = function(){
+                  if (window.ReactNativeWebView) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({type:'video_error', msg: 'read failed'}));
+                  }
+                };
+                reader.readAsDataURL(blob);
+              } catch (e) {
+                if (window.ReactNativeWebView) {
+                  window.ReactNativeWebView.postMessage(JSON.stringify({type:'video_error', msg: String(e && e.message || e)}));
+                }
+              }
+            };
+
+            var recStart = performance.now();
+            var raf = 0;
+            function drawOff(){
+              var now = performance.now();
+              if (s.uTime) s.gl.uniform1f(s.uTime, (now - recStart) / 1000);
+              if (s.uRes) s.gl.uniform2f(s.uRes, w, h);
+              s.gl.viewport(0, 0, w, h);
+              s.gl.drawArrays(s.gl.TRIANGLE_STRIP, 0, 4);
+              if (now - recStart < durationMs) {
+                raf = requestAnimationFrame(drawOff);
+              } else {
+                if (raf) cancelAnimationFrame(raf);
+                try { rec.stop(); } catch (e) {}
+              }
+            }
+            rec.start();
+            raf = requestAnimationFrame(drawOff);
+          } catch (e) {
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({type:'video_error', msg: String(e && e.message || e)}));
+            }
+          }
+        };
+
         if (window.ReactNativeWebView) {
           window.ReactNativeWebView.postMessage(JSON.stringify({type:'ready'}));
         }
@@ -133,76 +315,190 @@ function htmlFor(fragSrc: string, imageDataUri: string): string {
 </script></body></html>`;
 }
 
-export function ShaderWebView({
-  photoUri,
-  shader,
-  style,
-  onError,
-}: {
+export type ShaderWebViewHandle = {
+  // Resolves with a `data:image/png;base64,...` URI of the currently-rendered
+  // frame, or rejects if the WebView isn't ready or the canvas read fails.
+  capture: () => Promise<string>;
+  // Record the offscreen canvas for durationMs and resolve with the encoded
+  // video as base64 plus its MIME type. On iOS WKWebView that's normally
+  // `video/mp4`. Rejects if MediaRecorder isn't available.
+  captureVideo: (durationMs: number) => Promise<{ data: string; mime: string }>;
+};
+
+type ShaderWebViewProps = {
   photoUri: string;
   shader: string;
   style?: ViewStyle;
   onError?: (msg: string) => void;
-}) {
-  const [imageDataUri, setImageDataUri] = useState<string | null>(null);
-  const [readErr, setReadErr] = useState<string | null>(null);
+};
 
-  useEffect(() => {
-    let cancelled = false;
-    const path = photoUri.startsWith('file://') ? photoUri.slice(7) : photoUri;
-    RNFS.readFile(path, 'base64')
-      .then(b64 => {
-        if (cancelled) return;
-        const ext = path.toLowerCase().endsWith('.png') ? 'png' : 'jpeg';
-        setImageDataUri(`data:image/${ext};base64,${b64}`);
-      })
-      .catch(e => {
-        if (cancelled) return;
-        const msg = e instanceof Error ? e.message : String(e);
-        setReadErr(msg);
-        onError?.(`Photo read: ${msg}`);
-      });
-    return () => { cancelled = true; };
-  }, [photoUri, onError]);
+export const ShaderWebView = forwardRef<ShaderWebViewHandle, ShaderWebViewProps>(
+  function ShaderWebView({ photoUri, shader, style, onError }, ref) {
+    const [imageDataUri, setImageDataUri] = useState<string | null>(null);
+    const [readErr, setReadErr] = useState<string | null>(null);
+    const webRef = useRef<WebView | null>(null);
+    const pendingCapture = useRef<{
+      resolve: (v: string) => void;
+      reject: (e: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    } | null>(null);
+    const pendingVideo = useRef<{
+      resolve: (v: { data: string; mime: string }) => void;
+      reject: (e: Error) => void;
+      timer: ReturnType<typeof setTimeout>;
+    } | null>(null);
 
-  const html = useMemo(() => {
-    if (!imageDataUri) return null;
-    return htmlFor(shader, imageDataUri);
-  }, [shader, imageDataUri]);
+    useEffect(() => {
+      let cancelled = false;
+      const path = photoUri.startsWith('file://') ? photoUri.slice(7) : photoUri;
+      RNFS.readFile(path, 'base64')
+        .then(b64 => {
+          if (cancelled) return;
+          const ext = path.toLowerCase().endsWith('.png') ? 'png' : 'jpeg';
+          setImageDataUri(`data:image/${ext};base64,${b64}`);
+        })
+        .catch(e => {
+          if (cancelled) return;
+          const msg = e instanceof Error ? e.message : String(e);
+          setReadErr(msg);
+          onError?.(`Photo read: ${msg}`);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [photoUri, onError]);
 
-  if (readErr) {
-    return <View style={[styles.fallback, style]} />;
-  }
-  if (!html) {
-    return (
-      <View style={[styles.fallback, style]}>
-        <ActivityIndicator color="#9ba1a6" />
-      </View>
+    const html = useMemo(() => {
+      if (!imageDataUri) return null;
+      return htmlFor(shader, imageDataUri);
+    }, [shader, imageDataUri]);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        capture: () =>
+          new Promise<string>((resolve, reject) => {
+            const wv = webRef.current;
+            if (!wv) {
+              reject(new Error('Shader view not mounted'));
+              return;
+            }
+            if (pendingCapture.current) {
+              pendingCapture.current.reject(new Error('Superseded by newer capture'));
+              clearTimeout(pendingCapture.current.timer);
+            }
+            const timer = setTimeout(() => {
+              if (pendingCapture.current) {
+                const p = pendingCapture.current;
+                pendingCapture.current = null;
+                p.reject(new Error('Capture timed out'));
+              }
+            }, 4000);
+            pendingCapture.current = { resolve, reject, timer };
+            wv.injectJavaScript(
+              'try{window.__captureFrame && window.__captureFrame();}catch(e){};true;',
+            );
+          }),
+        captureVideo: (durationMs: number) =>
+          new Promise<{ data: string; mime: string }>((resolve, reject) => {
+            const wv = webRef.current;
+            if (!wv) {
+              reject(new Error('Shader view not mounted'));
+              return;
+            }
+            if (pendingVideo.current) {
+              pendingVideo.current.reject(new Error('Superseded by newer recording'));
+              clearTimeout(pendingVideo.current.timer);
+            }
+            // Generous slack on top of durationMs for encoder finalize +
+            // postMessage of a multi-MB base64 payload.
+            const timer = setTimeout(() => {
+              if (pendingVideo.current) {
+                const p = pendingVideo.current;
+                pendingVideo.current = null;
+                p.reject(new Error('Video capture timed out'));
+              }
+            }, durationMs + 15000);
+            pendingVideo.current = { resolve, reject, timer };
+            const payload = JSON.stringify(durationMs);
+            wv.injectJavaScript(
+              `try{window.__captureVideo && window.__captureVideo(${payload});}catch(e){};true;`,
+            );
+          }),
+      }),
+      [],
     );
-  }
-  return (
-    <WebView
-      source={{ html, baseUrl: '' }}
-      style={[styles.webview, style]}
-      originWhitelist={['*']}
-      scrollEnabled={false}
-      bounces={false}
-      javaScriptEnabled
-      allowFileAccess
-      mixedContentMode="always"
-      androidLayerType="hardware"
-      pointerEvents="none"
-      onMessage={ev => {
-        try {
-          const data = JSON.parse(ev.nativeEvent.data) as { type: string; msg?: string };
-          if (data.type === 'error' && data.msg) onError?.(data.msg);
-        } catch {}
-      }}
-    />
-  );
-}
+
+    if (readErr) {
+      return <View style={[styles.fallback, style]} />;
+    }
+    if (!html) {
+      return (
+        <View style={[styles.fallback, style]}>
+          <ActivityIndicator color="#9ba1a6" />
+        </View>
+      );
+    }
+    return (
+      <WebView
+        ref={webRef}
+        source={{ html, baseUrl: '' }}
+        style={[styles.webview, style]}
+        originWhitelist={['*']}
+        scrollEnabled={false}
+        bounces={false}
+        javaScriptEnabled
+        allowFileAccess
+        mixedContentMode="always"
+        androidLayerType="hardware"
+        opaque={false}
+        pointerEvents="none"
+        onMessage={ev => {
+          try {
+            const data = JSON.parse(ev.nativeEvent.data) as {
+              type: string;
+              msg?: string;
+              data?: string;
+              mime?: string;
+            };
+            if (data.type === 'error' && data.msg) onError?.(data.msg);
+            if (data.type === 'capture' && data.data && pendingCapture.current) {
+              const p = pendingCapture.current;
+              pendingCapture.current = null;
+              clearTimeout(p.timer);
+              p.resolve(data.data);
+            }
+            if (data.type === 'capture_error' && pendingCapture.current) {
+              const p = pendingCapture.current;
+              pendingCapture.current = null;
+              clearTimeout(p.timer);
+              p.reject(new Error(data.msg || 'Capture failed'));
+            }
+            if (
+              data.type === 'video' &&
+              data.data &&
+              data.mime &&
+              pendingVideo.current
+            ) {
+              const p = pendingVideo.current;
+              pendingVideo.current = null;
+              clearTimeout(p.timer);
+              p.resolve({ data: data.data, mime: data.mime });
+            }
+            if (data.type === 'video_error' && pendingVideo.current) {
+              const p = pendingVideo.current;
+              pendingVideo.current = null;
+              clearTimeout(p.timer);
+              p.reject(new Error(data.msg || 'Video capture failed'));
+            }
+          } catch {}
+        }}
+      />
+    );
+  },
+);
 
 const styles = StyleSheet.create({
-  webview: { backgroundColor: '#000' },
+  webview: { backgroundColor: 'transparent' },
   fallback: { backgroundColor: '#0f1114', alignItems: 'center', justifyContent: 'center' },
 });

@@ -1,8 +1,8 @@
 diff --git a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-index dd342cc..d85b8e4 100644
+index dd342cc..5bd3444 100644
 --- a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
 +++ b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-@@ -81,47 +81,161 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
+@@ -81,47 +81,172 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
          throw RuntimeError.error(withMessage: "Invalid URL")
        }
  
@@ -151,6 +151,16 @@ index dd342cc..d85b8e4 100644
 +      try? destHandle.close()
 +      throw error
 +    }
++
++    // Belt-and-suspenders: confirm the on-disk zip is exactly totalBytes.
++    // Catches any gap the per-chunk verification missed (e.g. write failure
++    // on the last byte of a chunk that nobody noticed).
++    let attrs = try FileManager.default.attributesOfItem(atPath: zipDest.path)
++    let onDisk = (attrs[.size] as? NSNumber)?.int64Value ?? -1
++    if onDisk != totalBytes {
++      throw RuntimeError.error(
++        withMessage: "Zip size mismatch: on-disk=\(onDisk) expected=\(totalBytes)")
++    }
 +  }
 +
 +  private func downloadOneChunk(
@@ -164,7 +174,8 @@ index dd342cc..d85b8e4 100644
 +        let config = URLSessionConfiguration.default
 +        config.httpMaximumConnectionsPerHost = 8
 +        let delegate = ChunkStreamDelegate(
-+          startOffset: start, writer: writer, progress: progress, chunkIndex: chunkIndex)
++          startOffset: start, expectedBytes: end - start + 1,
++          writer: writer, progress: progress, chunkIndex: chunkIndex)
 +        let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
 +        var req = URLRequest(url: url)
 +        req.setValue("bytes=\(start)-\(end)", forHTTPHeaderField: "Range")
@@ -189,7 +200,7 @@ index dd342cc..d85b8e4 100644
    func deleteModel(model: String) throws -> Promise<Void> {
      return Promise.async {
        let modelURL = try self.modelURL(model: model)
-@@ -181,6 +295,173 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
+@@ -181,6 +306,199 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
    }
  }
  
@@ -214,10 +225,14 @@ index dd342cc..d85b8e4 100644
 +}
 +
 +// Serial write guard so multiple chunks can write to the same pre-allocated
-+// file without racing. seek + write must be atomic per call.
++// file without racing. seek + write must be atomic per call. First write
++// error is sticky — chunk delegates query `firstError` at completion so a
++// silently-failed disk write forces the chunk to retry instead of reporting
++// success with zeros on disk.
 +private final class SerialFileWriter {
 +  private let handle: FileHandle
 +  private let queue = DispatchQueue(label: "cactus.dl.write")
++  private var _firstError: Error?
 +  init(handle: FileHandle) { self.handle = handle }
 +  func write(_ data: Data, at offset: Int64) {
 +    queue.sync {
@@ -225,9 +240,12 @@ index dd342cc..d85b8e4 100644
 +        try handle.seek(toOffset: UInt64(offset))
 +        try handle.write(contentsOf: data)
 +      } catch {
-+        // Swallow per-write errors; task will fail at didComplete and be retried.
++        if self._firstError == nil { self._firstError = error }
 +      }
 +    }
++  }
++  var firstError: Error? {
++    queue.sync { self._firstError }
 +  }
 +}
 +
@@ -279,6 +297,7 @@ index dd342cc..d85b8e4 100644
 +// writing each buffer at its absolute offset in the pre-allocated file.
 +private final class ChunkStreamDelegate: NSObject, URLSessionDataDelegate, URLSessionTaskDelegate {
 +  private let startOffset: Int64
++  private let expectedBytes: Int64
 +  private let writer: SerialFileWriter
 +  private let progress: ParallelProgressState
 +  private let chunkIndex: Int
@@ -287,10 +306,11 @@ index dd342cc..d85b8e4 100644
 +  private var response: URLResponse?
 +
 +  init(
-+    startOffset: Int64, writer: SerialFileWriter, progress: ParallelProgressState,
-+    chunkIndex: Int
++    startOffset: Int64, expectedBytes: Int64, writer: SerialFileWriter,
++    progress: ParallelProgressState, chunkIndex: Int
 +  ) {
 +    self.startOffset = startOffset
++    self.expectedBytes = expectedBytes
 +    self.writer = writer
 +    self.progress = progress
 +    self.chunkIndex = chunkIndex
@@ -343,6 +363,23 @@ index dd342cc..d85b8e4 100644
 +          withMessage: "Chunk \(chunkIndex): expected 206, got \(httpResp.statusCode)"))
 +      return
 +    }
++    // Verify the full Range body arrived. A clean mid-body disconnect can
++    // resolve didComplete with nil error on HTTP/3; without this check the
++    // pre-allocated zero bytes stay in the zip and extraction yields a
++    // truncated weight file that mmap rejects.
++    if bytesReceived != expectedBytes {
++      cont.resume(
++        throwing: RuntimeError.error(
++          withMessage:
++            "Chunk \(chunkIndex): received \(bytesReceived) bytes, expected \(expectedBytes)"))
++      return
++    }
++    // Propagate any write error that the SerialFileWriter swallowed — the
++    // network side can succeed while the disk side silently loses bytes.
++    if let writeErr = writer.firstError {
++      cont.resume(throwing: writeErr)
++      return
++    }
 +    cont.resume(returning: ())
 +  }
 +
@@ -363,7 +400,7 @@ index dd342cc..d85b8e4 100644
  private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, URLSessionTaskDelegate
  {
    private let progressHandler: (Double) -> Void
-@@ -236,6 +517,25 @@ private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, UR
+@@ -236,6 +554,25 @@ private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, UR
      }
    }
    

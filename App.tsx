@@ -16,12 +16,13 @@ import {
   TextInput,
   View,
   useColorScheme,
+  useWindowDimensions,
 } from 'react-native';
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
-import Svg, { Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import AudioRecord from 'react-native-audio-record';
 import {
   Camera,
@@ -36,7 +37,13 @@ import {
   setModelUrlOverride,
   type CactusLMMessage,
 } from 'cactus-react-native';
-import { ShaderWebView, extractShader } from './ShaderWebView';
+import {
+  ShaderWebView,
+  extractShader,
+  isShaderAnimated,
+  type ShaderWebViewHandle,
+} from './ShaderWebView';
+import * as RNFS from '@dr.pogodin/react-native-fs';
 
 // Route Gemma 4 E2B apple zip through Cloudflare. S3 (HF's origin) doesn't
 // speak HTTP/3, so assumesHTTP3Capable was a no-op there — metrics showed
@@ -122,6 +129,27 @@ function CloseIcon({ color = '#fff', size = 24 }: { color?: string; size?: numbe
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Path
         d="M6 6l12 12M18 6L6 18"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+function HelpIcon({ color = '#fff', size = 22 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={9} stroke={color} strokeWidth={1.8} />
+      <Path
+        d="M9.2 9.2a2.8 2.8 0 0 1 5.6 0c0 1.8-2.8 2.2-2.8 4"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M12 17.2v.01"
         stroke={color}
         strokeWidth={2.2}
         strokeLinecap="round"
@@ -250,6 +278,20 @@ function CopyIcon({ color = '#fff', size = 22 }: { color?: string; size?: number
         stroke={color}
         strokeWidth={1.8}
         strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+function CodeIcon({ color = '#fff', size = 18 }: { color?: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M9 7l-5 5 5 5M15 7l5 5-5 5"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </Svg>
   );
@@ -429,6 +471,11 @@ const TUTORIAL_PROMPTS = [
   'glitchy VHS',
 ];
 
+// Presence of this file means the user has already seen the tutorial at
+// least once, so we skip it on launch. The (?) button on the camera page
+// re-opens the tutorial regardless.
+const TUTORIAL_FLAG_PATH = `${RNFS.DocumentDirectoryPath}/tutorial-seen.flag`;
+
 // Cloudflared quick tunnel pointing at eval_server/server.mjs (localhost:9000).
 // Quick-tunnel URLs rotate every restart — update this string and rebuild
 // the app when the tunnel is restarted.
@@ -456,8 +503,28 @@ type LmHook = ReturnType<typeof useCactusLM>;
 type SttHook = ReturnType<typeof useCactusSTT>;
 
 function Root() {
-  const [screen, setScreen] = useState<Screen>('tutorial');
+  // null while we're still checking whether the user has seen the
+  // tutorial before. Avoids flashing the tutorial at returning users and
+  // also avoids flashing the camera permission fallback at first-time
+  // users before the tutorial mounts on top.
+  const [screen, setScreen] = useState<Screen | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    RNFS.exists(TUTORIAL_FLAG_PATH)
+      .then(exists => {
+        if (cancelled) return;
+        setScreen(exists ? 'camera' : 'tutorial');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setScreen('tutorial');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Held at the top level so download state survives navigation between
   // screens. When this was inside ReviewScreen the hook re-instantiated on
@@ -491,6 +558,15 @@ function Root() {
     setScreen('camera');
   }, []);
 
+  const handleTutorialDone = useCallback(() => {
+    // Fire-and-forget: worst case the flag doesn't land and the user sees
+    // the tutorial twice on relaunch, which is harmless.
+    RNFS.writeFile(TUTORIAL_FLAG_PATH, '1', 'utf8').catch(() => {});
+    setScreen('camera');
+  }, []);
+
+  const handleShowTutorial = useCallback(() => setScreen('tutorial'), []);
+
   // CameraScreen stays mounted under everything else so the capture
   // session warms up while the user reads the tutorial. Without this the
   // "Get started" tap stalls on `useCameraDevice` resolving + the AVCapture
@@ -502,13 +578,14 @@ function Root() {
       <CameraScreen
         onPhoto={handlePhotoTaken}
         onPromptEval={() => setScreen('promptEval')}
+        onShowTutorial={handleShowTutorial}
         lm={lm}
         stt={stt}
         isActive={cameraActive}
       />
       {screen === 'tutorial' ? (
         <View style={StyleSheet.absoluteFill}>
-          <TutorialScreen onDone={() => setScreen('camera')} />
+          <TutorialScreen onDone={handleTutorialDone} />
         </View>
       ) : null}
       {screen === 'review' ? (
@@ -578,11 +655,12 @@ function TutorialScreen({ onDone }: { onDone: () => void }) {
         <Text style={styles.tutorialTitle}>
           {page === 0 ? 'Take a photo' : 'Say how it should look'}
         </Text>
-        <Text style={styles.tutorialBodyText}>
-          {page === 0
-            ? 'Point your camera at anything in front of you — a face, a plant, the room. Tap the shutter to capture.'
-            : 'Gemma 4 writes shaders for your photo from your prompt — running fully on-device. Tap the mic and describe the effect you want.'}
-        </Text>
+        {page === 1 ? (
+          <Text style={styles.tutorialBodyText}>
+            Gemma 4 writes shaders for your photo from your prompt — running
+            fully on-device. Tap the mic and describe the effect you want.
+          </Text>
+        ) : null}
 
         {page === 1 ? (
           <View style={styles.tutorialChipsWrap}>
@@ -626,12 +704,14 @@ function TutorialScreen({ onDone }: { onDone: () => void }) {
 function CameraScreen({
   onPhoto,
   onPromptEval,
+  onShowTutorial,
   lm,
   stt,
   isActive = true,
 }: {
   onPhoto: (uri: string) => void;
   onPromptEval: () => void;
+  onShowTutorial: () => void;
   lm: LmHook;
   stt: SttHook;
   isActive?: boolean;
@@ -738,6 +818,13 @@ function CameraScreen({
       />
 
       <View style={[styles.cameraTopBar, { paddingTop: insets.top + 8 }]}>
+        <Pressable
+          onPress={onShowTutorial}
+          style={[styles.flipButton, styles.helpButton]}
+          hitSlop={12}
+        >
+          <HelpIcon color="#fff" size={22} />
+        </Pressable>
         {downloadBanner ? (
           <View style={styles.downloadBanner}>
             <View style={styles.downloadBannerRow}>
@@ -817,6 +904,13 @@ function ReviewScreen({
   stt: SttHook;
 }) {
   const insets = useSafeAreaInsets();
+  const { width: screenW, height: screenH } = useWindowDimensions();
+
+  // Source dimensions of the current photo. Camera captures are 4:3, but
+  // library uploads can be anything — square, 16:9, portrait — and we
+  // need this to stop the shader canvas from stretching the texture to
+  // a portrait phone aspect. null while Image.getSize is in flight.
+  const [imgDims, setImgDims] = useState<{ w: number; h: number } | null>(null);
 
   const [isRecording, setIsRecording] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
@@ -825,6 +919,8 @@ function ReviewScreen({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [showShader, setShowShader] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const [typed, setTyped] = useState('');
   const [nowMs, setNowMs] = useState(Date.now());
   const [downloadStartMs, setDownloadStartMs] = useState<number | null>(null);
@@ -832,6 +928,52 @@ function ReviewScreen({
     if (lm.isDownloading && downloadStartMs == null) setDownloadStartMs(Date.now());
     if (!lm.isDownloading && lm.isDownloaded) setDownloadStartMs(null);
   }, [lm.isDownloading, lm.isDownloaded, downloadStartMs]);
+
+  useEffect(() => {
+    if (!photoUri) {
+      setImgDims(null);
+      return;
+    }
+    let cancelled = false;
+    Image.getSize(
+      photoUri,
+      (w, h) => {
+        if (!cancelled) setImgDims({ w, h });
+      },
+      () => {
+        if (!cancelled) setImgDims(null);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [photoUri]);
+
+  // Fit the photo's aspect ratio inside the window, centered, letterboxed
+  // by the screen background. Both the <Image> layer and the WebGL canvas
+  // live inside this frame so the shader samples 1:1 with the source —
+  // no stretching when an uploaded 16:9 or square image hits a portrait
+  // phone aspect.
+  const photoFrame = useMemo(() => {
+    if (!imgDims) return null;
+    const imgAspect = imgDims.w / imgDims.h;
+    const screenAspect = screenW / screenH;
+    let w: number;
+    let h: number;
+    if (imgAspect > screenAspect) {
+      w = screenW;
+      h = screenW / imgAspect;
+    } else {
+      h = screenH;
+      w = screenH * imgAspect;
+    }
+    return {
+      width: w,
+      height: h,
+      left: (screenW - w) / 2,
+      top: (screenH - h) / 2,
+    };
+  }, [imgDims, screenW, screenH]);
   // Set when a chip with a canned shader is tapped. Skips Gemma; flows
   // straight into ShaderWebView. Cleared whenever the user uses voice or
   // text input so generation reclaims the screen.
@@ -1024,18 +1166,27 @@ function ReviewScreen({
     (label: string, prompt: string) => {
       if (isGenerating || isFinalizing || isRecording) return;
       setError(null);
-      setTranscript(prompt);
-      setResponse('');
       const canned = CANNED_SHADERS[label];
       if (canned) {
+        // Tapping the already-active canned chip toggles it off.
+        if (manualShader === canned) {
+          setManualShader(null);
+          setTranscript('');
+          setResponse('');
+          return;
+        }
         // Pre-baked shader from the eval rounds — skip Gemma entirely.
+        setTranscript(prompt);
+        setResponse('');
         setManualShader(canned);
       } else {
+        setTranscript(prompt);
+        setResponse('');
         setManualShader(null);
         askGemma(prompt);
       }
     },
-    [askGemma, isGenerating, isFinalizing, isRecording],
+    [askGemma, isGenerating, isFinalizing, isRecording, manualShader],
   );
 
   const handleSendTyped = useCallback(() => {
@@ -1049,14 +1200,7 @@ function ReviewScreen({
     askGemma(trimmed);
   }, [typed, askGemma, isGenerating, isFinalizing, isRecording]);
 
-  const handleShare = useCallback(async () => {
-    if (!photoUri) return;
-    try {
-      await Share.share({ url: photoUri });
-    } catch (err) {
-      Alert.alert('Share failed', err instanceof Error ? err.message : String(err));
-    }
-  }, [photoUri]);
+  const shaderViewRef = useRef<ShaderWebViewHandle | null>(null);
 
   const handleCopyDebug = useCallback(async () => {
     const parts = [
@@ -1080,6 +1224,51 @@ function ReviewScreen({
       (response && !isGenerating ? extractShader(response) : null),
     [manualShader, response, isGenerating],
   );
+
+  const handleCopyShader = useCallback(async () => {
+    if (!shaderSource) {
+      Alert.alert('No shader', 'Generate or pick a shader first.');
+      return;
+    }
+    try {
+      await Share.share({ message: shaderSource });
+    } catch (err) {
+      Alert.alert('Share failed', err instanceof Error ? err.message : String(err));
+    }
+  }, [shaderSource]);
+
+  const handleShare = useCallback(async () => {
+    if (!photoUri || isCapturing) return;
+    const tmpDir = RNFS.TemporaryDirectoryPath.replace(/\/$/, '');
+    try {
+      const canCaptureShader =
+        !!shaderViewRef.current && !!shaderSource && !isGenerating;
+      if (!canCaptureShader) {
+        await Share.share({ url: photoUri });
+        return;
+      }
+      setIsCapturing(true);
+      // Animated shaders share as a 5s video of the offscreen canvas; static
+      // shaders share as a PNG at the photo's native resolution.
+      if (isShaderAnimated(shaderSource!)) {
+        const { data, mime } = await shaderViewRef.current!.captureVideo(5000);
+        const ext = mime.includes('webm') ? 'webm' : 'mp4';
+        const path = `${tmpDir}/shader-${Date.now()}.${ext}`;
+        await RNFS.writeFile(path, data, 'base64');
+        await Share.share({ url: `file://${path}` });
+      } else {
+        const dataUri = await shaderViewRef.current!.capture();
+        const base64 = dataUri.replace(/^data:image\/png;base64,/, '');
+        const path = `${tmpDir}/shader-${Date.now()}.png`;
+        await RNFS.writeFile(path, base64, 'base64');
+        await Share.share({ url: `file://${path}` });
+      }
+    } catch (err) {
+      Alert.alert('Share failed', err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsCapturing(false);
+    }
+  }, [photoUri, shaderSource, isGenerating, isCapturing]);
 
   const lmBusy = lm.isDownloading || !lm.isDownloaded;
   const sttBusy = stt.isDownloading || !stt.isDownloaded;
@@ -1107,15 +1296,32 @@ function ReviewScreen({
   return (
     <View style={styles.screen}>
       {photoUri ? (
-        <Image source={{ uri: photoUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      ) : null}
-      {photoUri && shaderSource && !isGenerating ? (
-        <ShaderWebView
-          photoUri={photoUri}
-          shader={shaderSource}
-          style={StyleSheet.absoluteFill}
-          onError={msg => setError(`Shader: ${msg}`)}
-        />
+        photoFrame ? (
+          <View style={[styles.photoFrame, photoFrame]}>
+            <Image
+              source={{ uri: photoUri }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+            />
+            {shaderSource && !isGenerating ? (
+              <ShaderWebView
+                ref={shaderViewRef}
+                photoUri={photoUri}
+                shader={shaderSource}
+                style={StyleSheet.absoluteFill}
+                onError={msg => setError(`Shader: ${msg}`)}
+              />
+            ) : null}
+          </View>
+        ) : (
+          // Image.getSize hasn't resolved yet — show the photo letterboxed
+          // via resizeMode="contain" so we never briefly stretch it.
+          <Image
+            source={{ uri: photoUri }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="contain"
+          />
+        )
       ) : null}
       <View style={[StyleSheet.absoluteFill, styles.scrim]} />
 
@@ -1125,6 +1331,20 @@ function ReviewScreen({
         style={[styles.debugButton, { top: insets.top + 12 }]}
       >
         <DebugIcon color="#fff" size={20} />
+      </Pressable>
+
+      <Pressable
+        onPress={() => setShowShader(true)}
+        disabled={!shaderSource}
+        hitSlop={12}
+        style={[
+          styles.shaderButton,
+          { top: insets.top + 60 },
+          !shaderSource && styles.shaderButtonDisabled,
+        ]}
+      >
+        <CodeIcon color="#fff" size={16} />
+        <Text style={styles.shaderButtonText}>View shader</Text>
       </Pressable>
 
       <ScrollView
@@ -1178,6 +1398,7 @@ function ReviewScreen({
           // model and feed the WebView directly. So they stay tappable
           // even while the model is still downloading or initializing.
           const isCanned = ex.label in CANNED_SHADERS;
+          const isActive = isCanned && manualShader === CANNED_SHADERS[ex.label];
           const disabled = isCanned
             ? isRecording || isFinalizing || isGenerating
             : micDisabled || isRecording;
@@ -1186,10 +1407,16 @@ function ReviewScreen({
               key={ex.label}
               onPress={() => handleExamplePrompt(ex.label, ex.prompt)}
               disabled={disabled}
-              style={[styles.chip, disabled && styles.chipDisabled]}
+              style={[
+                styles.chip,
+                isActive && styles.chipActive,
+                disabled && styles.chipDisabled,
+              ]}
               hitSlop={6}
             >
-              <Text style={styles.chipText}>{ex.label}</Text>
+              <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                {ex.label}
+              </Text>
             </Pressable>
           );
         })}
@@ -1253,8 +1480,17 @@ function ReviewScreen({
           )}
         </Pressable>
 
-        <Pressable onPress={handleShare} style={styles.sideButton} hitSlop={12}>
-          <ShareIcon color="#fff" size={24} />
+        <Pressable
+          onPress={handleShare}
+          disabled={isCapturing}
+          style={[styles.sideButton, isCapturing && { opacity: 0.5 }]}
+          hitSlop={12}
+        >
+          {isCapturing ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <ShareIcon color="#fff" size={24} />
+          )}
         </Pressable>
       </View>
 
@@ -1293,6 +1529,41 @@ function ReviewScreen({
             ) : null}
             <Text selectable style={styles.debugText}>
               {response || '(no output yet)'}
+            </Text>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showShader}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowShader(false)}
+      >
+        <View style={styles.debugScreen}>
+          <View style={[styles.debugTopBar, { paddingTop: insets.top + 8 }]}>
+            <Pressable
+              onPress={() => setShowShader(false)}
+              hitSlop={12}
+              style={styles.debugTopIcon}
+            >
+              <CloseIcon color="#fff" size={24} />
+            </Pressable>
+            <Text style={styles.debugTitle}>Shader source</Text>
+            <Pressable
+              onPress={handleCopyShader}
+              hitSlop={12}
+              style={styles.debugTopIcon}
+            >
+              <CopyIcon color="#fff" size={22} />
+            </Pressable>
+          </View>
+          <ScrollView
+            style={styles.debugBody}
+            contentContainerStyle={styles.debugBodyContent}
+          >
+            <Text selectable style={styles.debugText}>
+              {shaderSource || '(no shader active)'}
             </Text>
           </ScrollView>
         </View>
@@ -1713,6 +1984,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  helpButton: { marginRight: 12 },
 
   downloadBanner: {
     flex: 1,
@@ -1814,6 +2086,7 @@ const styles = StyleSheet.create({
   },
 
   scrim: { backgroundColor: 'rgba(0,0,0,0.35)' },
+  photoFrame: { position: 'absolute', overflow: 'hidden' },
 
   outputBox: {
     position: 'absolute',
@@ -1892,7 +2165,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.18)',
   },
   chipDisabled: { opacity: 0.4 },
+  chipActive: {
+    backgroundColor: '#f5f7fa',
+    borderColor: '#f5f7fa',
+  },
   chipText: { color: '#f5f7fa', fontSize: 13, fontWeight: '600' },
+  chipTextActive: { color: '#0f1114' },
 
   inputRow: {
     position: 'absolute',
@@ -1970,6 +2248,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
+  },
+
+  shaderButton: {
+    position: 'absolute',
+    right: 64,
+    height: 40,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(15,17,20,0.82)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    zIndex: 10,
+  },
+  shaderButtonDisabled: { opacity: 0.4 },
+  shaderButtonText: {
+    color: '#f5f7fa',
+    fontSize: 13,
+    fontWeight: '600',
   },
 
   debugScreen: { flex: 1, backgroundColor: '#0f1114' },
