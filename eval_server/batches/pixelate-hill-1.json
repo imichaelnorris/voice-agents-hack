@@ -1,0 +1,309 @@
+{
+  "_comment": "Pixelate hill climb 1: 5 variants × 10 runs. Targets the cell-size-not-square + vec3=vec4 errors.",
+  "options": {
+    "temperature": 0.7,
+    "maxTokens": 1024
+  },
+  "prompts": [
+    {
+      "id": "P0-baseline-r1",
+      "label": "P0-baseline",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P0-baseline-r2",
+      "label": "P0-baseline",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P0-baseline-r3",
+      "label": "P0-baseline",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P0-baseline-r4",
+      "label": "P0-baseline",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P0-baseline-r5",
+      "label": "P0-baseline",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P0-baseline-r6",
+      "label": "P0-baseline",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P0-baseline-r7",
+      "label": "P0-baseline",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P0-baseline-r8",
+      "label": "P0-baseline",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P0-baseline-r9",
+      "label": "P0-baseline",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P0-baseline-r10",
+      "label": "P0-baseline",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P1-rule-r1",
+      "label": "P1-rule",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for grid/block effects: for square cells, compute cell size as vec2(BLOCK_PX) / u_resolution (NOT vec2(BLOCK_PX/u_res.x, 1.0)). Snap UVs with vec2 snapped = (floor(v_uv / cell) + 0.5) * cell."
+    },
+    {
+      "id": "P1-rule-r2",
+      "label": "P1-rule",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for grid/block effects: for square cells, compute cell size as vec2(BLOCK_PX) / u_resolution (NOT vec2(BLOCK_PX/u_res.x, 1.0)). Snap UVs with vec2 snapped = (floor(v_uv / cell) + 0.5) * cell."
+    },
+    {
+      "id": "P1-rule-r3",
+      "label": "P1-rule",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for grid/block effects: for square cells, compute cell size as vec2(BLOCK_PX) / u_resolution (NOT vec2(BLOCK_PX/u_res.x, 1.0)). Snap UVs with vec2 snapped = (floor(v_uv / cell) + 0.5) * cell."
+    },
+    {
+      "id": "P1-rule-r4",
+      "label": "P1-rule",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for grid/block effects: for square cells, compute cell size as vec2(BLOCK_PX) / u_resolution (NOT vec2(BLOCK_PX/u_res.x, 1.0)). Snap UVs with vec2 snapped = (floor(v_uv / cell) + 0.5) * cell."
+    },
+    {
+      "id": "P1-rule-r5",
+      "label": "P1-rule",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for grid/block effects: for square cells, compute cell size as vec2(BLOCK_PX) / u_resolution (NOT vec2(BLOCK_PX/u_res.x, 1.0)). Snap UVs with vec2 snapped = (floor(v_uv / cell) + 0.5) * cell."
+    },
+    {
+      "id": "P1-rule-r6",
+      "label": "P1-rule",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for grid/block effects: for square cells, compute cell size as vec2(BLOCK_PX) / u_resolution (NOT vec2(BLOCK_PX/u_res.x, 1.0)). Snap UVs with vec2 snapped = (floor(v_uv / cell) + 0.5) * cell."
+    },
+    {
+      "id": "P1-rule-r7",
+      "label": "P1-rule",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for grid/block effects: for square cells, compute cell size as vec2(BLOCK_PX) / u_resolution (NOT vec2(BLOCK_PX/u_res.x, 1.0)). Snap UVs with vec2 snapped = (floor(v_uv / cell) + 0.5) * cell."
+    },
+    {
+      "id": "P1-rule-r8",
+      "label": "P1-rule",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for grid/block effects: for square cells, compute cell size as vec2(BLOCK_PX) / u_resolution (NOT vec2(BLOCK_PX/u_res.x, 1.0)). Snap UVs with vec2 snapped = (floor(v_uv / cell) + 0.5) * cell."
+    },
+    {
+      "id": "P1-rule-r9",
+      "label": "P1-rule",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for grid/block effects: for square cells, compute cell size as vec2(BLOCK_PX) / u_resolution (NOT vec2(BLOCK_PX/u_res.x, 1.0)). Snap UVs with vec2 snapped = (floor(v_uv / cell) + 0.5) * cell."
+    },
+    {
+      "id": "P1-rule-r10",
+      "label": "P1-rule",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nHint for grid/block effects: for square cells, compute cell size as vec2(BLOCK_PX) / u_resolution (NOT vec2(BLOCK_PX/u_res.x, 1.0)). Snap UVs with vec2 snapped = (floor(v_uv / cell) + 0.5) * cell."
+    },
+    {
+      "id": "P2-snippet-r1",
+      "label": "P2-snippet",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for snapping UVs to a square grid:\n\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 color = texture2D(u_texture, snapped).rgb;"
+    },
+    {
+      "id": "P2-snippet-r2",
+      "label": "P2-snippet",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for snapping UVs to a square grid:\n\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 color = texture2D(u_texture, snapped).rgb;"
+    },
+    {
+      "id": "P2-snippet-r3",
+      "label": "P2-snippet",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for snapping UVs to a square grid:\n\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 color = texture2D(u_texture, snapped).rgb;"
+    },
+    {
+      "id": "P2-snippet-r4",
+      "label": "P2-snippet",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for snapping UVs to a square grid:\n\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 color = texture2D(u_texture, snapped).rgb;"
+    },
+    {
+      "id": "P2-snippet-r5",
+      "label": "P2-snippet",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for snapping UVs to a square grid:\n\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 color = texture2D(u_texture, snapped).rgb;"
+    },
+    {
+      "id": "P2-snippet-r6",
+      "label": "P2-snippet",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for snapping UVs to a square grid:\n\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 color = texture2D(u_texture, snapped).rgb;"
+    },
+    {
+      "id": "P2-snippet-r7",
+      "label": "P2-snippet",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for snapping UVs to a square grid:\n\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 color = texture2D(u_texture, snapped).rgb;"
+    },
+    {
+      "id": "P2-snippet-r8",
+      "label": "P2-snippet",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for snapping UVs to a square grid:\n\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 color = texture2D(u_texture, snapped).rgb;"
+    },
+    {
+      "id": "P2-snippet-r9",
+      "label": "P2-snippet",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for snapping UVs to a square grid:\n\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 color = texture2D(u_texture, snapped).rgb;"
+    },
+    {
+      "id": "P2-snippet-r10",
+      "label": "P2-snippet",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference snippet for snapping UVs to a square grid:\n\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 color = texture2D(u_texture, snapped).rgb;"
+    },
+    {
+      "id": "P3-fullshader-r1",
+      "label": "P3-fullshader",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a square-cell pixelation effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 c = texture2D(u_texture, snapped).rgb;\n  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "P3-fullshader-r2",
+      "label": "P3-fullshader",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a square-cell pixelation effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 c = texture2D(u_texture, snapped).rgb;\n  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "P3-fullshader-r3",
+      "label": "P3-fullshader",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a square-cell pixelation effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 c = texture2D(u_texture, snapped).rgb;\n  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "P3-fullshader-r4",
+      "label": "P3-fullshader",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a square-cell pixelation effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 c = texture2D(u_texture, snapped).rgb;\n  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "P3-fullshader-r5",
+      "label": "P3-fullshader",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a square-cell pixelation effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 c = texture2D(u_texture, snapped).rgb;\n  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "P3-fullshader-r6",
+      "label": "P3-fullshader",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a square-cell pixelation effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 c = texture2D(u_texture, snapped).rgb;\n  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "P3-fullshader-r7",
+      "label": "P3-fullshader",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a square-cell pixelation effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 c = texture2D(u_texture, snapped).rgb;\n  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "P3-fullshader-r8",
+      "label": "P3-fullshader",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a square-cell pixelation effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 c = texture2D(u_texture, snapped).rgb;\n  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "P3-fullshader-r9",
+      "label": "P3-fullshader",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a square-cell pixelation effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 c = texture2D(u_texture, snapped).rgb;\n  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "P3-fullshader-r10",
+      "label": "P3-fullshader",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.\n\nReference shader for a square-cell pixelation effect:\n\nprecision mediump float;\nuniform sampler2D u_texture;\nuniform float u_time;\nuniform vec2 u_resolution;\nvarying vec2 v_uv;\n\nvoid main() {\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 c = texture2D(u_texture, snapped).rgb;\n  gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);\n}"
+    },
+    {
+      "id": "P4-rephrase-r1",
+      "label": "P4-rephrase",
+      "prompt": "snap UVs to a 16x16 grid using vec2 cell = vec2(16.0)/u_resolution and vec2 snapped = (floor(v_uv/cell) + 0.5) * cell, then sample once at the snapped coordinate",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P4-rephrase-r2",
+      "label": "P4-rephrase",
+      "prompt": "snap UVs to a 16x16 grid using vec2 cell = vec2(16.0)/u_resolution and vec2 snapped = (floor(v_uv/cell) + 0.5) * cell, then sample once at the snapped coordinate",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P4-rephrase-r3",
+      "label": "P4-rephrase",
+      "prompt": "snap UVs to a 16x16 grid using vec2 cell = vec2(16.0)/u_resolution and vec2 snapped = (floor(v_uv/cell) + 0.5) * cell, then sample once at the snapped coordinate",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P4-rephrase-r4",
+      "label": "P4-rephrase",
+      "prompt": "snap UVs to a 16x16 grid using vec2 cell = vec2(16.0)/u_resolution and vec2 snapped = (floor(v_uv/cell) + 0.5) * cell, then sample once at the snapped coordinate",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P4-rephrase-r5",
+      "label": "P4-rephrase",
+      "prompt": "snap UVs to a 16x16 grid using vec2 cell = vec2(16.0)/u_resolution and vec2 snapped = (floor(v_uv/cell) + 0.5) * cell, then sample once at the snapped coordinate",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P4-rephrase-r6",
+      "label": "P4-rephrase",
+      "prompt": "snap UVs to a 16x16 grid using vec2 cell = vec2(16.0)/u_resolution and vec2 snapped = (floor(v_uv/cell) + 0.5) * cell, then sample once at the snapped coordinate",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P4-rephrase-r7",
+      "label": "P4-rephrase",
+      "prompt": "snap UVs to a 16x16 grid using vec2 cell = vec2(16.0)/u_resolution and vec2 snapped = (floor(v_uv/cell) + 0.5) * cell, then sample once at the snapped coordinate",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P4-rephrase-r8",
+      "label": "P4-rephrase",
+      "prompt": "snap UVs to a 16x16 grid using vec2 cell = vec2(16.0)/u_resolution and vec2 snapped = (floor(v_uv/cell) + 0.5) * cell, then sample once at the snapped coordinate",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P4-rephrase-r9",
+      "label": "P4-rephrase",
+      "prompt": "snap UVs to a 16x16 grid using vec2 cell = vec2(16.0)/u_resolution and vec2 snapped = (floor(v_uv/cell) + 0.5) * cell, then sample once at the snapped coordinate",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    },
+    {
+      "id": "P4-rephrase-r10",
+      "label": "P4-rephrase",
+      "prompt": "snap UVs to a 16x16 grid using vec2 cell = vec2(16.0)/u_resolution and vec2 snapped = (floor(v_uv/cell) + 0.5) * cell, then sample once at the snapped coordinate",
+      "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white."
+    }
+  ]
+}
