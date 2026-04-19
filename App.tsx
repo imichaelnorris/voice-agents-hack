@@ -29,6 +29,7 @@ import {
   useCameraPermission,
   usePhotoOutput,
 } from 'react-native-vision-camera';
+import { launchImageLibrary } from 'react-native-image-picker';
 import {
   useCactusLM,
   useCactusSTT,
@@ -275,6 +276,42 @@ function CameraIconLarge({
         strokeWidth={2.2}
       />
       <Path d="M48 24h4" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function PhotoLibraryIcon({
+  color = '#fff',
+  size = 26,
+}: {
+  color?: string;
+  size?: number;
+}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect
+        x={3}
+        y={5}
+        width={15}
+        height={13}
+        rx={2}
+        stroke={color}
+        strokeWidth={1.8}
+      />
+      <Path
+        d="M7 14l3-3 3 3 2-2 3 3"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M21 8v11a2 2 0 0 1-2 2H8"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        opacity={0.6}
+      />
     </Svg>
   );
 }
@@ -602,17 +639,41 @@ function CameraScreen({
     }
   }, [busy, onPhoto, photoOutput]);
 
+  const handlePickFromLibrary = useCallback(async () => {
+    if (busy) return;
+    try {
+      const result = await launchImageLibrary({
+        mediaType: 'photo',
+        selectionLimit: 1,
+        includeBase64: false,
+      });
+      if (result.didCancel) return;
+      if (result.errorCode) {
+        Alert.alert('Photo library', result.errorMessage ?? result.errorCode);
+        return;
+      }
+      const asset = result.assets?.[0];
+      if (!asset?.uri) return;
+      onPhoto(asset.uri);
+    } catch (err) {
+      Alert.alert(
+        'Photo library',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }, [busy, onPhoto]);
+
   // Surface the one-time model download so judges don't stare at a dead camera
   // on first launch. Gemma dominates (~1–2 hr); whisper finishes in seconds.
   // Cactus caches on disk, so subsequent launches skip this entirely.
   const downloadBanner = !lm.isDownloaded
     ? {
-        label: 'Downloading Gemma 4 E2B · one-time',
+        label: 'Downloading Gemma 4 E2B',
         progress: lm.downloadProgress ?? 0,
       }
     : !stt.isDownloaded
     ? {
-        label: 'Downloading speech model · one-time',
+        label: 'Downloading speech model',
         progress: stt.downloadProgress ?? 0,
       }
     : null;
@@ -699,7 +760,16 @@ function CameraScreen({
             <View style={styles.shutterInner} />
           )}
         </Pressable>
-        <View style={styles.cameraBottomSlot} />
+        <View style={styles.cameraBottomSlot}>
+          <Pressable
+            onPress={handlePickFromLibrary}
+            disabled={busy}
+            style={styles.libraryButton}
+            hitSlop={8}
+          >
+            <PhotoLibraryIcon color="#fff" size={28} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -1675,6 +1745,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
+  },
+  libraryButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(15,17,20,0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   promptEvalButtonText: {
     color: '#fff',

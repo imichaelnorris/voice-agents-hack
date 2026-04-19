@@ -1,20 +1,13 @@
 diff --git a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-index dd342cc..26323b3 100644
+index dd342cc..d85b8e4 100644
 --- a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
 +++ b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-@@ -81,19 +81,24 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
+@@ -81,47 +81,161 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
          throw RuntimeError.error(withMessage: "Invalid URL")
        }
  
 -      var lastPct: Double = -1
-+      // Throttle progress callbacks: at most one callback per 250 ms, regardless
-+      // of how often didWriteData fires. Previous code dispatched to main on
-+      // every didWriteData and only filtered by 1% inside the dispatched block,
-+      // so a fast connection was queueing thousands of main-queue blocks per
-+      // second. Testing whether this alone unblocks single-stream throughput
-+      // before reaching for parallel Range requests.
-+      let progressState = ProgressThrottle()
-       let delegate = DownloadProgressDelegate { p in
+-      let delegate = DownloadProgressDelegate { p in
 -        DispatchQueue.main.async {
 -          let pct = floor(min(max(0, p), 1) * 99) / 100
 -          if pct - lastPct >= 0.01 {
@@ -22,29 +15,185 @@ index dd342cc..26323b3 100644
 -            lastPct = pct
 -          }
 -        }
-+        progressState.maybeEmit(p, callback: callback)
-       }
- 
-       let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+-      }
+-
+-      let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
 -      let task = session.downloadTask(with: url)
-+
-+      var request = URLRequest(url: url)
-+      if #available(iOS 15.0, *) {
-+        request.assumesHTTP3Capable = true
-+      }
-+      let task = session.downloadTask(with: request)
- 
+-
        callback?(0.0)
  
-@@ -181,6 +186,30 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
+-      let (fileURL, response) = try await delegate.awaitCompletion(for: task)
+-
+-      guard let httpResponse = response as? HTTPURLResponse,
+-            (200...299).contains(httpResponse.statusCode)
+-      else {
+-        let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+-        throw RuntimeError.error(
+-          withMessage: "Download failed with HTTP status code: \(statusCode)")
++      let caches = try FileManager.default.url(
++        for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
++      let cactusCacheDir = caches.appendingPathComponent("cactus/models", isDirectory: true)
++      try FileManager.default.createDirectory(
++        at: cactusCacheDir, withIntermediateDirectories: true)
++      let zipDest = cactusCacheDir
++        .appendingPathComponent(UUID().uuidString)
++        .appendingPathExtension("zip")
++
++      // Parallel Range download (6 chunks). Falls back to single-stream if the
++      // origin doesn't honor ranges or HEAD fails.
++      do {
++        try await self.downloadParallelRanges(
++          url: url, zipDest: zipDest, numChunks: 6, callback: callback)
++      } catch {
++        print("[cactus.dl] parallel failed (\(error)); single-stream fallback")
++        try? FileManager.default.removeItem(at: zipDest)
++        try await self.downloadSingleStream(
++          url: url, zipDest: zipDest, callback: callback)
+       }
+ 
+       do {
+         try FileManager.default.createDirectory(at: modelURL, withIntermediateDirectories: true)
+-        try FileManager.default.unzipItem(at: fileURL, to: modelURL)
+-        try? FileManager.default.removeItem(at: fileURL)
++        try FileManager.default.unzipItem(at: zipDest, to: modelURL)
++        try? FileManager.default.removeItem(at: zipDest)
+ 
+         DispatchQueue.main.async { callback?(1.0) }
+       } catch {
+         try? FileManager.default.removeItem(at: modelURL)
+-        try? FileManager.default.removeItem(at: fileURL)
++        try? FileManager.default.removeItem(at: zipDest)
+ 
+         throw RuntimeError.error(withMessage: "Failed to download and unzip model: \(error)")
+       }
+     }
+   }
+ 
++  private func downloadSingleStream(
++    url: URL, zipDest: URL, callback: ((Double) -> Void)?
++  ) async throws {
++    let progressState = ProgressThrottle()
++    let delegate = DownloadProgressDelegate { p in
++      progressState.maybeEmit(p, callback: callback)
++    }
++    let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
++    var request = URLRequest(url: url)
++    if #available(iOS 15.0, *) { request.assumesHTTP3Capable = true }
++    let task = session.downloadTask(with: request)
++    let (fileURL, response) = try await delegate.awaitCompletion(for: task)
++    guard let httpResponse = response as? HTTPURLResponse,
++          (200...299).contains(httpResponse.statusCode)
++    else {
++      let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
++      throw RuntimeError.error(
++        withMessage: "Download failed with HTTP status code: \(statusCode)")
++    }
++    try FileManager.default.moveItem(at: fileURL, to: zipDest)
++  }
++
++  private func downloadParallelRanges(
++    url: URL, zipDest: URL, numChunks: Int, callback: ((Double) -> Void)?
++  ) async throws {
++    // HEAD to learn total size + confirm range support. Follow redirects.
++    var headReq = URLRequest(url: url)
++    headReq.httpMethod = "HEAD"
++    if #available(iOS 15.0, *) { headReq.assumesHTTP3Capable = true }
++    let headSession = URLSession(configuration: .default)
++    let (_, headRespRaw) = try await headSession.data(for: headReq)
++    guard let headResp = headRespRaw as? HTTPURLResponse,
++          (200...299).contains(headResp.statusCode) else {
++      throw RuntimeError.error(
++        withMessage: "HEAD failed: \((headRespRaw as? HTTPURLResponse)?.statusCode ?? -1)")
++    }
++    let totalBytes = headResp.expectedContentLength
++    let acceptRanges = (headResp.value(forHTTPHeaderField: "Accept-Ranges") ?? "").lowercased()
++    let finalURL = headResp.url ?? url
++    guard totalBytes > 0 else {
++      throw RuntimeError.error(withMessage: "No Content-Length on HEAD")
++    }
++    guard acceptRanges.contains("bytes") else {
++      throw RuntimeError.error(withMessage: "Server didn't advertise Accept-Ranges: bytes")
++    }
++    print(
++      "[cactus.dl.parallel] total=\(totalBytes) chunks=\(numChunks) host=\(finalURL.host ?? "?")")
++
++    // Pre-allocate the destination file at full size so each chunk can write
++    // at its absolute offset without racing on file length.
++    FileManager.default.createFile(atPath: zipDest.path, contents: nil)
++    let destHandle = try FileHandle(forWritingTo: zipDest)
++    try destHandle.truncate(atOffset: UInt64(totalBytes))
++
++    let writer = SerialFileWriter(handle: destHandle)
++    let progress = ParallelProgressState(total: totalBytes, callback: callback)
++
++    let chunkSize = totalBytes / Int64(numChunks)
++    let ranges: [(Int64, Int64)] = (0..<numChunks).map { i in
++      let start = Int64(i) * chunkSize
++      let end = i == numChunks - 1 ? totalBytes - 1 : start + chunkSize - 1
++      return (start, end)
++    }
++
++    do {
++      try await withThrowingTaskGroup(of: Void.self) { group in
++        for i in 0..<numChunks {
++          let (startByte, endByte) = ranges[i]
++          group.addTask {
++            try await self.downloadOneChunk(
++              url: finalURL, start: startByte, end: endByte,
++              writer: writer, progress: progress,
++              chunkIndex: i, maxRetries: 3)
++          }
++        }
++        try await group.waitForAll()
++      }
++      try destHandle.close()
++    } catch {
++      try? destHandle.close()
++      throw error
++    }
++  }
++
++  private func downloadOneChunk(
++    url: URL, start: Int64, end: Int64,
++    writer: SerialFileWriter, progress: ParallelProgressState,
++    chunkIndex: Int, maxRetries: Int
++  ) async throws {
++    var attempt = 0
++    while true {
++      do {
++        let config = URLSessionConfiguration.default
++        config.httpMaximumConnectionsPerHost = 8
++        let delegate = ChunkStreamDelegate(
++          startOffset: start, writer: writer, progress: progress, chunkIndex: chunkIndex)
++        let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
++        var req = URLRequest(url: url)
++        req.setValue("bytes=\(start)-\(end)", forHTTPHeaderField: "Range")
++        if #available(iOS 15.0, *) { req.assumesHTTP3Capable = true }
++        let task = session.dataTask(with: req)
++        try await delegate.awaitCompletion(for: task)
++        return
++      } catch {
++        attempt += 1
++        if attempt > maxRetries {
++          print("[cactus.dl.parallel] chunk \(chunkIndex) failed after \(maxRetries) retries: \(error)")
++          throw error
++        }
++        let delayNs = UInt64(pow(2.0, Double(attempt)) * 500_000_000)
++        print("[cactus.dl.parallel] chunk \(chunkIndex) retry \(attempt) after \(error)")
++        try await Task.sleep(nanoseconds: delayNs)
++        progress.rewindBytesFor(chunk: chunkIndex)
++      }
++    }
++  }
++  
+   func deleteModel(model: String) throws -> Promise<Void> {
+     return Promise.async {
+       let modelURL = try self.modelURL(model: model)
+@@ -181,6 +295,173 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
    }
  }
  
-+// Time-based progress throttle. URLSession calls didWriteData on every
-+// received buffer; on a fast link that can be thousands of calls per second.
-+// We were marshalling each one to the main queue via DispatchQueue.async,
-+// which on a fast connection backs up the main queue and very likely caps
-+// our read-side throughput. This bounds emission to one callback per 250 ms.
++// Time-based progress throttle for the single-stream downloader.
 +private final class ProgressThrottle {
 +  private let queue = DispatchQueue(label: "cactus.dl.progress")
 +  private var lastEmittedAt: TimeInterval = 0
@@ -64,10 +213,157 @@ index dd342cc..26323b3 100644
 +  }
 +}
 +
++// Serial write guard so multiple chunks can write to the same pre-allocated
++// file without racing. seek + write must be atomic per call.
++private final class SerialFileWriter {
++  private let handle: FileHandle
++  private let queue = DispatchQueue(label: "cactus.dl.write")
++  init(handle: FileHandle) { self.handle = handle }
++  func write(_ data: Data, at offset: Int64) {
++    queue.sync {
++      do {
++        try handle.seek(toOffset: UInt64(offset))
++        try handle.write(contentsOf: data)
++      } catch {
++        // Swallow per-write errors; task will fail at didComplete and be retried.
++      }
++    }
++  }
++}
++
++// Aggregates bytes across N chunk delegates and emits throttled callbacks.
++// Also tracks per-chunk bytes so a retry can subtract what a failed attempt
++// had counted before starting the next attempt.
++private final class ParallelProgressState {
++  private let total: Int64
++  private let callback: ((Double) -> Void)?
++  private let queue = DispatchQueue(label: "cactus.dl.parallel.progress")
++  private var bytesDone: Int64 = 0
++  private var perChunk: [Int: Int64] = [:]
++  private var lastEmittedAt: TimeInterval = 0
++  private var lastPct: Double = -1
++  private let intervalSec: TimeInterval = 0.25
++
++  init(total: Int64, callback: ((Double) -> Void)?) {
++    self.total = total
++    self.callback = callback
++  }
++
++  func add(bytes: Int64, chunkIndex: Int) {
++    queue.async {
++      self.bytesDone += bytes
++      self.perChunk[chunkIndex, default: 0] += bytes
++      let now = CACurrentMediaTime()
++      if now - self.lastEmittedAt < self.intervalSec { return }
++      let pct = floor(Double(self.bytesDone) / Double(self.total) * 99) / 100
++      if pct - self.lastPct < 0.01 { return }
++      self.lastEmittedAt = now
++      self.lastPct = pct
++      let cb = self.callback
++      DispatchQueue.main.async { cb?(pct) }
++    }
++  }
++
++  // Called when a chunk's attempt fails. We subtract what it had credited
++  // toward bytesDone before the next attempt begins counting again.
++  func rewindBytesFor(chunk: Int) {
++    queue.sync {
++      let n = self.perChunk[chunk] ?? 0
++      self.bytesDone -= n
++      self.perChunk[chunk] = 0
++    }
++  }
++}
++
++// Streams a single Range response via URLSessionDataDelegate.didReceive,
++// writing each buffer at its absolute offset in the pre-allocated file.
++private final class ChunkStreamDelegate: NSObject, URLSessionDataDelegate, URLSessionTaskDelegate {
++  private let startOffset: Int64
++  private let writer: SerialFileWriter
++  private let progress: ParallelProgressState
++  private let chunkIndex: Int
++  private var bytesReceived: Int64 = 0
++  private var continuation: CheckedContinuation<Void, Error>?
++  private var response: URLResponse?
++
++  init(
++    startOffset: Int64, writer: SerialFileWriter, progress: ParallelProgressState,
++    chunkIndex: Int
++  ) {
++    self.startOffset = startOffset
++    self.writer = writer
++    self.progress = progress
++    self.chunkIndex = chunkIndex
++  }
++
++  func awaitCompletion(for task: URLSessionDataTask) async throws {
++    try await withCheckedThrowingContinuation {
++      (cont: CheckedContinuation<Void, Error>) in
++      self.continuation = cont
++      task.resume()
++    }
++  }
++
++  func urlSession(
++    _ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
++    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
++  ) {
++    self.response = response
++    if let httpResp = response as? HTTPURLResponse, httpResp.statusCode != 206 {
++      // Server ignored the Range header (200 full body, 416 out of range, etc.)
++      // — cancel so parallel path fails and caller falls back to single stream.
++      completionHandler(.cancel)
++    } else {
++      completionHandler(.allow)
++    }
++  }
++
++  func urlSession(
++    _ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data
++  ) {
++    let offset = startOffset + bytesReceived
++    writer.write(data, at: offset)
++    let n = Int64(data.count)
++    bytesReceived += n
++    progress.add(bytes: n, chunkIndex: chunkIndex)
++  }
++
++  func urlSession(
++    _ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?
++  ) {
++    guard let cont = self.continuation else { return }
++    self.continuation = nil
++    if let error = error {
++      cont.resume(throwing: error)
++      return
++    }
++    if let httpResp = self.response as? HTTPURLResponse, httpResp.statusCode != 206 {
++      cont.resume(
++        throwing: RuntimeError.error(
++          withMessage: "Chunk \(chunkIndex): expected 206, got \(httpResp.statusCode)"))
++      return
++    }
++    cont.resume(returning: ())
++  }
++
++  func urlSession(
++    _ session: URLSession, task: URLSessionTask,
++    didFinishCollecting metrics: URLSessionTaskMetrics
++  ) {
++    for t in metrics.transactionMetrics {
++      let proto = t.networkProtocolName ?? "?"
++      let status = (t.response as? HTTPURLResponse)?.statusCode ?? -1
++      print(
++        "[cactus.dl.parallel.metrics] chunk=\(chunkIndex) proto=\(proto) status=\(status) bytes=\(bytesReceived) remote=\(t.remoteAddress ?? "?")"
++      )
++    }
++  }
++}
++
  private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, URLSessionTaskDelegate
  {
    private let progressHandler: (Double) -> Void
-@@ -236,6 +265,25 @@ private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, UR
+@@ -236,6 +517,25 @@ private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, UR
      }
    }
    

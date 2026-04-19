@@ -40,6 +40,16 @@ The tools we build in Stage 1 want to generalize. Stage 2 extracts them into a s
 
 This is Karpathy-autoresearch-shaped but scoped to prompt-for-small-model optimization.
 
+### Side deliverable — Cactus native-download optimization
+
+While bringing the app up we ended up doing enough patching to `cactus-react-native@1.13.0` that it's a secondary hackathon deliverable in its own right. The full diff lives in `patches/cactus-react-native+1.13.0.patch` (applied automatically via `postinstall: npx patch-package`); headline changes:
+
+- **Parallel-Range downloader (6 chunks) for large model zips.** Upstream uses a single `URLSessionDownloadTask` and was getting ~10 MB/s (80 Mbps) on the 4.68 GB Gemma 4 E2B apple zip, while Safari on the same iPhone + network clocked ~100 Mbps on the same URL. The origin (AWS S3 behind HF's 302) serves HTTP/1.1 only — no h2, no h3 — so parallelism across `Range`-requested chunks was the real lever. Six concurrent `URLSessionDataTask`s stream into a pre-allocated destination file via serial `FileHandle.seek`/`write`, with per-chunk 3× retry, 250 ms throttled aggregate progress, and automatic fallback to single-stream if the server refuses ranges.
+- **Registry patches** — admit int4-only models (upstream drops them), bump `RUNTIME_VERSION` to `1.14.0` so HF resolves the tag where `int4-apple` lives, expose `setModelUrlOverride(slug, {proApple, url})` so apps can route specific models through private CDNs.
+- **HTTP/3 opt-in + `URLSessionTaskMetrics` logging** for observability.
+
+Worth upstreaming (see TODO in `HACKATHON.md`).
+
 ---
 
 ## Dev notes
@@ -47,7 +57,7 @@ This is Karpathy-autoresearch-shaped but scoped to prompt-for-small-model optimi
 See [`HACKATHON.md`](HACKATHON.md) for:
 
 - Running Metro from behind a hostile network (ngrok tunnel + AppDelegate wiring).
-- The `cactus-react-native` registry patch that admits int4-only models + the native background-URLSession patch that keeps model downloads alive across app suspension.
+- Full writeup of the `cactus-react-native` patch (registry fixes + parallel-Range downloader).
 
 ---
 

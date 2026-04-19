@@ -39,6 +39,8 @@
 	<string>Record your voice prompt. Audio is transcribed on-device.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Save photos to your library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Pick a photo from your library to shade.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
