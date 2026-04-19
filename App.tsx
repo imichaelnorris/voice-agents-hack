@@ -34,6 +34,10 @@ import {
   useCactusSTT,
   type CactusLMMessage,
 } from 'cactus-react-native';
+import {
+  activateKeepAwake,
+  deactivateKeepAwake,
+} from '@sayem314/react-native-keep-awake';
 import { ShaderWebView, extractShader } from './ShaderWebView';
 import { CANNED_SHADERS } from './cannedShaders';
 
@@ -1022,6 +1026,44 @@ function PromptEvalScreen({ onBack, lm }: { onBack: () => void; lm: LmHook }) {
   const [error, setError] = useState<string | null>(null);
   const [wsStatus, setWsStatus] = useState<EvalWsStatus>('idle');
   const [log, setLog] = useState<EvalLogEntry[]>([]);
+  const [expandedLogIds, setExpandedLogIds] = useState<Set<string>>(() => new Set());
+  // Tick once per minute so the "X min ago" labels update without us having
+  // to recompute on every render.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Keep the screen awake while client mode is connected — iOS otherwise
+  // suspends the app on auto-lock and kills the WebSocket mid-batch.
+  useEffect(() => {
+    if (wsStatus === 'connected') {
+      activateKeepAwake();
+      return () => deactivateKeepAwake();
+    }
+    return undefined;
+  }, [wsStatus]);
+
+  const toggleLogExpanded = useCallback((id: string) => {
+    setExpandedLogIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const formatRelativeTime = (ts: number): string => {
+    const ageMs = Math.max(0, nowMs - ts);
+    const seconds = Math.floor(ageMs / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours} hr ago`;
+  };
 
   const wsRef = useRef<WebSocket | null>(null);
   const chainRef = useRef<Promise<void>>(Promise.resolve());
@@ -1297,22 +1339,42 @@ function PromptEvalScreen({ onBack, lm }: { onBack: () => void; lm: LmHook }) {
         {log.length > 0 ? (
           <View style={styles.evalLogBox}>
             <Text style={styles.evalSectionLabel}>Recent requests</Text>
-            {log.map(entry => (
-              <View key={`${entry.id}-${entry.ts}`} style={styles.evalLogRow}>
-                <Text style={styles.evalLogPrompt} numberOfLines={2}>
-                  #{entry.id.slice(0, 8)} · {entry.prompt}
-                </Text>
-                {entry.error ? (
-                  <Text style={styles.errorText} numberOfLines={3}>
-                    {entry.error}
-                  </Text>
-                ) : (
-                  <Text style={styles.evalLogResponse} numberOfLines={3}>
-                    {entry.response}
-                  </Text>
-                )}
-              </View>
-            ))}
+            {log.map(entry => {
+              const expanded = expandedLogIds.has(entry.id);
+              return (
+                <Pressable
+                  key={`${entry.id}-${entry.ts}`}
+                  onPress={() => toggleLogExpanded(entry.id)}
+                  style={styles.evalLogRow}
+                >
+                  <View style={styles.evalLogHeader}>
+                    <Text style={styles.evalLogPrompt} numberOfLines={expanded ? undefined : 2}>
+                      #{entry.id.slice(0, 8)} · {entry.prompt}
+                    </Text>
+                    <Text style={styles.evalLogTime}>
+                      {formatRelativeTime(entry.ts)}
+                    </Text>
+                  </View>
+                  {entry.error ? (
+                    <Text
+                      style={styles.errorText}
+                      numberOfLines={expanded ? undefined : 3}
+                      selectable={expanded}
+                    >
+                      {entry.error}
+                    </Text>
+                  ) : (
+                    <Text
+                      style={styles.evalLogResponse}
+                      numberOfLines={expanded ? undefined : 3}
+                      selectable={expanded}
+                    >
+                      {entry.response}
+                    </Text>
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
         ) : null}
       </ScrollView>
@@ -1678,7 +1740,23 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 4,
   },
-  evalLogPrompt: { color: '#a78bfa', fontSize: 12, fontWeight: '700' },
+  evalLogHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  evalLogPrompt: {
+    color: '#a78bfa',
+    fontSize: 12,
+    fontWeight: '700',
+    flex: 1,
+  },
+  evalLogTime: {
+    color: '#6b7280',
+    fontSize: 11,
+    fontVariant: ['tabular-nums'],
+  },
   evalLogResponse: {
     color: '#e5e7eb',
     fontSize: 12,
