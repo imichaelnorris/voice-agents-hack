@@ -108,3 +108,54 @@ Net: 1 win (underwater), 1 regression (invert won't compile), 1 weakening (CRT).
 
 Cheapest test for #2: rerun round 2 with one prepended assistant turn (the round 1 invert output, which was perfect). If invert stops regressing, structure preservation is the dominant failure mode and few-shot examples are the right lever.
 
+## Round 3 — on-device baseline via WebSocket eval harness
+
+First eval against the actual deployment target: `gemma-4-e2b-it-int4-pro` running through Cactus on iPhone, driven from `node eval_server/run_batch.mjs eval_server/batches/baseline-50.json` (10 concepts × 5 runs at temperature 0.7). Same `SHADER_SYSTEM_PROMPT` as App.tsx (with the `clamp final RGB to [0,1]` directive).
+
+50 prompts attempted; 45 returned a shader, 5 native-errored (Cactus/iOS thermal kills, not model output). Of the 45 returns, all 45 pass the cheap shape check (`has main`, `writes gl_FragColor`, `samples u_texture`, etc.) — but **eyeballing the actual GLSL shows the 90% pass rate is massively overstated**.
+
+### Real failure modes seen in the 45 returns
+
+The shape check only looks for the right shape of declarations and a `gl_FragColor` write. It does not catch GLSL type errors, semantic emptiness, or degenerate parameters. Tally of what the model actually does wrong:
+
+| failure mode | example | hits | fix lever |
+|---|---|---|---|
+| `pow(vec3, float)` | `pow(color.rgb, 1.5)` (no such overload in GLSL ES 1.00) | 5/5 neon, scattered elsewhere | system prompt rule: broadcast scalar exponents with `vec3(x)` |
+| `vec3 = mix(scalar, scalar, scalar)` | `vec3 sepia_color = mix(0.9, 0.7, s);` (mix of scalars returns scalar) | sepia-r2, underwater-r1 | system prompt rule on `mix` arg type matching |
+| `vec3 = floor(scalar)` | `vec3 r = floor(color.r * 4.0) / 4.0;` | posterize-r1 | "construct vec3 with `vec3(...)`, never assign a scalar directly" |
+| variable redeclared | `float caustics = ...; ... float caustics = ...;` | underwater-r2 | "do not redeclare variables in the same scope" |
+| `gl_FragColor = vec3` (missing alpha) | `gl_FragColor = clamp(finalColorVec, 0., 1.);` (vec3 not vec4) | thermal-r1 | "always wrap final color in `vec4(rgb, 1.0)`" |
+| degenerate params → no effect | `smoothstep(scanline - s, scanline - s + s, 0.0)` (edges equal → 0) | crt-r1 | hard to fix via prompt; would need eval-driven rejection |
+| ad-hoc effect formula | sepia uses random tan colors instead of the standard luminance matrix; thermal does nonsense channel arithmetic instead of a piecewise color ramp | sepia × all, thermal × all | few-shot examples for the textbook formulas |
+| missing semantic intent | "neon glow" → magenta tint with time pulse, no actual bloom (multi-sample blur) | all 5 neon | architectural — bloom needs multi-pass or many texture samples; small models don't reach for it |
+
+Concept-by-concept actually-rendering rate (my eyeball, not automated):
+- **invert** 5/5 ✅ — textbook, only minor variation in alpha handling
+- **crt** 2/5 ⚠️ — most have visible-but-weak scanlines; one has degenerate `smoothstep(a,a,…)` so no effect
+- **underwater** 2/5 ⚠️ — r4/r5 work; r1 has type errors, r2 redeclares, r3 blows out
+- **vignette** 3/5 ⚠️ — most work, some have scalar/vec confusion in the falloff math
+- **neon** 0/5 ❌ — all have `pow(vec3, float)` type error → won't compile at all
+- **sepia** 1/5 ❌ — none use the canonical sepia matrix; r2 has mix type error
+- **posterize** 4/5 ✅ — r1 type-errors with vec3=scalar, rest are clean
+- **pixelate** 0/5 ❌ — all have weird arithmetic on `pixelSizeVec`; some use texCoord wrong; outputs look broken
+- **thermal** 0/4 ❌ — all do nonsense channel arithmetic instead of a luminance ramp; none produce a recognizable thermal palette
+- **glitch** 1/1 (only one returned) ⚠️ — too few samples to judge
+
+True realistic-render rate: **~18/41 ≈ 44%**, dramatically below the 90% shape-only number.
+
+### Round 4 plan: targeted system-prompt edits
+
+These are the cheap, high-leverage edits to test next:
+
+1. **Add a "GLSL ES 1.00 type rules" section** to the system prompt:
+   - "When using `pow`, `mix`, `min`, `max`, `clamp` with vector first args, broadcast scalars: `pow(rgb, vec3(2.0))`, not `pow(rgb, 2.0)`."
+   - "Construct vec3 values with `vec3(x)` or three components — never assign a scalar to a vec3."
+   - "`gl_FragColor` is a `vec4` — wrap with `vec4(rgb, 1.0)`."
+2. **Few-shot the canonical formulas** for color-transform concepts (sepia matrix, thermal LUT) — current model invents them.
+3. **For "glow"-style prompts**, either
+   - add a one-shot multi-tap-bloom example, or
+   - keep accepting the lossier semantics and reframe the chip as "neon tint" instead of "neon glow" so we don't measure against an unmet expectation.
+4. **Build a real GLSL compile check** in `analyze.mjs`: pipe each shader through `glslang`/`naga`/headless WebGL so the analyzer reflects truth instead of shape. Without this we'll keep flying blind on prompt edits.
+
+Item (4) is the most leveraged — it makes the loop honest. Item (1) probably moves real-pass-rate from ~44% to ~70% on its own (eliminates the type-error class).
+
