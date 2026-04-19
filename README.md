@@ -17,7 +17,7 @@ For the safe-demo path: 9 hand-tuned canned shader chips at the bottom (Invert, 
 
 ## Deliverables
 
-This submission is three artifacts in one repo.
+This submission is two artifacts in one repo.
 
 ### 1. The app
 
@@ -25,17 +25,7 @@ A React Native iOS app doing voice → on-device LLM → live GLSL rendering. **
 
 Code: `App.tsx`, `ShaderWebView.tsx`, `cannedShaders.ts`.
 
-### 2. PSTACK — system-prompt optimizer for small on-device models
-
-Coordinate-descent algorithm for hill-climbing a single system prompt against a frozen evaluation set, holding the model constant. Built specifically for small on-device models, where the system prompt dominates output quality more than it does for frontier models.
-
-**Run summary**: ~1,200 inferences overnight against Gemma 4 E2B INT4. Lifted GLSL compile-pass rate from **84% → 100%** on a frozen 50-prompt benchmark in 4 rounds. Headline finding: **a single 4–8 line in-context snippet shifts per-concept pass rate by +30 to +60 pp**, where a one-line declarative rule barely moves the needle. Stacking more snippets has a hidden cost (the model copies snippet structure and drops mandatory declarations), recoverable with a one-line anchor.
-
-- Algorithm: [`PSTACK.md`](PSTACK.md)
-- Full round-by-round writeup: [`evals/FINDINGS.md`](evals/FINDINGS.md)
-- Raw inference outputs + scored JSON for every batch: [`evals/raw/`](evals/raw/), [`evals/rounds/`](evals/rounds/)
-
-### 3. `cactus-react-native` patches (worth upstreaming)
+### 2. `cactus-react-native` patches (worth upstreaming)
 
 The Cactus model downloader was the bottleneck on first launch — 4.68 GB at ~10 MB/s on a network where Safari pulled the same URL at ~100 MB/s. Patches in [`patches/cactus-react-native+1.13.0.patch`](patches/cactus-react-native+1.13.0.patch) (auto-applied via `postinstall`):
 
@@ -52,12 +42,10 @@ Full writeup in [`HACKATHON.md`](HACKATHON.md).
 | Where | What |
 |---|---|
 | `App.tsx`, `ShaderWebView.tsx`, `cannedShaders.ts` | The app |
-| `PSTACK.md` | Optimizer algorithm (model-agnostic) |
-| `evals/FINDINGS.md` | Round-by-round writeup of the overnight run |
-| `evals/` | Raw + scored data, scripts, hill specs |
 | `patches/cactus-react-native+1.13.0.patch` | All Cactus patches |
 | `HACKATHON.md` | Cactus patch deep-dive + Metro-over-ngrok dev setup |
 | `eval_server/README.md` | Phone-as-runtime / Mac-as-driver eval rig (cloudflared broker) |
+| `PSTACK.md`, `evals/` | Notes on how the shader system prompt was optimized — see footnote below |
 
 ## Tech stack
 
@@ -66,6 +54,12 @@ Full writeup in [`HACKATHON.md`](HACKATHON.md).
 - Gemma 4 E2B INT4 (apple variant; ANE-prefill via `.mlpackage` Core ML files)
 - WebGL 1 / GLSL ES 1.00 in WKWebView for shader rendering
 - `glslangValidator` (Khronos reference compiler) for offline scoring
+
+---
+
+## Footnote: how the shader system prompt was optimized
+
+Not part of the submission, just notes on process. The shader system prompt in `App.tsx` was tuned with a small coordinate-descent loop ([`PSTACK.md`](PSTACK.md)) — pick the worst-performing concept on a frozen 50-prompt eval, generate 5 candidate edits, run 10 inferences each, pick the winner, full-batch re-validate, repeat. Ran ~1,200 inferences against Gemma 4 E2B INT4 overnight. Notes in [`evals/FINDINGS.md`](evals/FINDINGS.md), raw outputs in `evals/`.
 
 ---
 
