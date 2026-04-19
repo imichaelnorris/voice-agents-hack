@@ -1,75 +1,76 @@
 # DeepShades
 
-A voice-prompted shader generator running Gemma 4 E2B on-device via [Cactus](https://cactuscompute.com/).
+> **Speak a photo filter into existence.**
 
-Take a photo, hold the mic, say what you want the photo to look like. The on-device model produces a fragment shader, which renders over the photo in a WebView.
-
-The hackathon frame is in the cactus-compute [voice-agents-hack brief](https://github.com/cactus-compute/voice-agents-hack) (preserved at the bottom of this file for reference). This repo is a fork.
+Snap a photo, hold the mic, describe the look you want. **Gemma 4 E2B** writes a fragment shader on the fly and renders it over your photo — entirely on-device, no cloud round-trip.
 
 > Tested on iPhone 17 Pro only. Other devices (including iPad) are untested.
 
-## Stages
+## Demo flow
 
-The work is broken into three stages. Stage 0 is the working app. Stage 1 is the research core. Stage 2 is the generalizable artifact.
+1. Open the app → camera live.
+2. Tap shutter → review screen with the captured photo.
+3. Hold the mic and say what you want — *"sepia"*, *"thermal cam"*, *"chromatic aberration"*, anything.
+4. Gemma 4 E2B transcribes the audio (its own multimodal audio path), writes the GLSL, and a WebView compiles + renders the shader over the photo in real time.
 
-### Stage 0 — Scaffold (done)
+For the safe-demo path: 9 hand-tuned canned shader chips at the bottom (Invert, CRT, Underwater, Vignette, Neon, Sepia, X-Pro 2, Overexposure, …) bypass Gemma entirely and render instantly.
 
-A React Native iOS app that:
+## Deliverables
 
-1. Opens the camera on launch.
-2. After the shutter, shows a review screen with the captured photo.
-3. Holds a mic button; audio is transcribed by **Gemma 4 E2B** itself (its multimodal audio path, via Cactus) into a prompt — same on-device weights as the shader generator, no separate STT model.
-4. Passes `{photo, prompt}` to Gemma 4 E2B (via Cactus).
+This submission is three artifacts in one repo.
 
-The app scaffold, camera capture, voice capture, model download/init, and on-device inference hookup are in place. See `App.tsx`.
+### 1. The app
 
-### Stage 1 — Shader generation, optimized (current)
+A React Native iOS app doing voice → on-device LLM → live GLSL rendering. **One model handles everything**: Gemma 4 E2B INT4 (~4.68 GB Cactus apple bundle) does both audio transcription (its multimodal audio encoder) and shader generation. No separate Whisper, no cloud calls, no second download.
 
-Turn the transcribed voice prompt into a fragment shader and render it over the photo.
+Code: `App.tsx`, `ShaderWebView.tsx`, `cannedShaders.ts`.
 
-The goal is to demonstrate dynamically producing *compilable code* (GLSL) on-device from a voice prompt. That capability is practical for photo apps, games, and any other real-time graphics surface where shaders are the native unit of visual effect.
+### 2. PSTACK — system-prompt optimizer for small on-device models
 
-- **Render target**: WebView. Shader is injected into an HTML page that draws a WebGL quad, using the photo as a texture input.
-- **Generation**: Gemma 4 E2B emits the shader source. The system prompt is the main lever we're optimizing.
-- **Eval loop** (desktop first, mobile later): a seed set of ~100 user prompts; for each, ask Gemma for a shader; score pass/fail on "compiles + renders non-trivially", with Claude Code as the judge for ambiguous cases.
-- **Deliverable**: a hand-tuned system prompt that pushes eval pass rate as high as possible. The interesting sub-problem is discovering Gemma 4 E2B's failure modes (hallucinated GLSL builtins? mis-declared `precision`? wrong `gl_FragCoord` conventions?) and writing the system prompt to steer around them.
-- **Shareable outputs** (planned): export the shaded photo as an image, and — if the shader is animated (`iTime`-dependent) — record a short loop and export as a video. Makes the output something a user can actually send to a friend.
+Coordinate-descent algorithm for hill-climbing a single system prompt against a frozen evaluation set, holding the model constant. Built specifically for small on-device models, where the system prompt dominates output quality more than it does for frontier models.
 
-### Stage 2 — Prompt optimizer (future, separate repo)
+**Run summary**: ~1,200 inferences overnight against Gemma 4 E2B INT4. Lifted GLSL compile-pass rate from **84% → 100%** on a frozen 50-prompt benchmark in 4 rounds. Headline finding: **a single 4–8 line in-context snippet shifts per-concept pass rate by +30 to +60 pp**, where a one-line declarative rule barely moves the needle. Stacking more snippets has a hidden cost (the model copies snippet structure and drops mandatory declarations), recoverable with a one-line anchor.
 
-The tools we build in Stage 1 want to generalize. Stage 2 extracts them into a standalone optimizer:
+- Algorithm: [`PSTACK.md`](PSTACK.md)
+- Full round-by-round writeup: [`evals/FINDINGS.md`](evals/FINDINGS.md)
+- Raw inference outputs + scored JSON for every batch: [`evals/raw/`](evals/raw/), [`evals/rounds/`](evals/rounds/)
 
-- **Inputs**: a frozen model, a seed system prompt, a target output spec, a desired-outcome metric.
-- **Loop**: generate a dataset → run evals → propose system-prompt edits → re-eval. Driven by Claude Code so a human isn't the one iterating by hand.
-- **Hypothesis**: for small on-device models, the system prompt dominates output quality more than it does for frontier models. If that's right, a focused optimizer for small-model system prompts is a useful artifact.
+### 3. `cactus-react-native` patches (worth upstreaming)
 
-This is Karpathy-autoresearch-shaped but scoped to prompt-for-small-model optimization.
+The Cactus model downloader was the bottleneck on first launch — 4.68 GB at ~10 MB/s on a network where Safari pulled the same URL at ~100 MB/s. Patches in [`patches/cactus-react-native+1.13.0.patch`](patches/cactus-react-native+1.13.0.patch) (auto-applied via `postinstall`):
 
-### Side deliverable — Cactus native-download optimization
+- **Shared-session parallel-Range downloader.** 6 concurrent `URLSessionDataTask`s sharing one `URLSession` so HTTP/3 multiplexes the range streams over a single QUIC connection — one handshake, one BBR slow-start, no stream-level head-of-line blocking. **Result: ~80 MB/s from R2 (HTTP/3) vs ~60 MB/s from HuggingFace (HTTP/1.1 origin)**, ~6× upstream's single-stream throughput.
+- **Correctness defenses** for parallel chunks. A clean mid-body H3 disconnect resolves `didCompleteWithError` with `nil`, leaving zeros where bytes should be — symptom: next launch fails with *"Cannot map file: embed_tokens_per_layer.weights"*. Three guards close the gap: per-chunk `bytesReceived == expectedBytes` check, `SerialFileWriter` records first-write-error and surfaces it, post-download `stat` confirms exact byte count.
+- **Registry patches**: admit int4-only models (upstream drops them), bump `RUNTIME_VERSION` to `1.14.0` for HF tag resolution, expose `setModelUrlOverride(slug, …)` for routing through private CDNs.
+- **HTTP/3 opt-in + observability**: `URLRequest.assumesHTTP3Capable = true` everywhere, per-transaction `URLSessionTaskMetrics` logging, live `[cactus.dl.parallel.rate]` log every 2 s.
 
-While bringing the app up we ended up doing enough patching to `cactus-react-native@1.13.0` that it's a secondary hackathon deliverable in its own right. The full diff lives in `patches/cactus-react-native+1.13.0.patch` (applied automatically via `postinstall: npx patch-package`); headline changes:
+Full writeup in [`HACKATHON.md`](HACKATHON.md).
 
-- **Shared-session Range downloader for large model zips.** Upstream ships a single `URLSessionDownloadTask`; Safari on the same iPhone + Wi-Fi could pull the 4.68 GB Gemma 4 E2B apple zip at ~100 MB/s while URLSession topped out around ~10 MB/s. The first parallel-Range iteration split the download across six `Range`-requested chunks on six separate `URLSession`s — still slower than Safari because each chunk paid its own QUIC handshake serially before any bytes flowed. The fix was to share one `URLSession` across all 6 chunks with per-task `URLSessionDataDelegate`s (iOS 15+), so HTTP/3 multiplexes the range streams over a single QUIC connection: one handshake, one BBR slow-start, no stream-level HoL blocking. After the shared-session fix, throughput on a 5 GHz Wi-Fi network was ~**80 MB/s from a Cloudflare R2 bucket** with H3 enabled vs ~60 MB/s from HuggingFace (whose AWS S3 origin is HTTP/1.1-only). Six concurrent `URLSessionDataTask`s stream into a pre-allocated destination file via serial `FileHandle.seek`/`write`, with per-chunk 3× retry, 250 ms throttled aggregate progress, and automatic fallback to single-stream if the server refuses ranges.
-- **Correctness fixes discovered along the way.** A naive parallel-chunk implementation can silently produce a truncated zip — a clean mid-body disconnect on H3 resolves `didCompleteWithError` with `nil`, leaving pre-allocated zeros where bytes should be. The symptom is the next app launch failing init with `Cactus init failed: Cannot map file: embed_tokens_per_layer.weights`. Three defenses added: (a) chunk completion verifies `bytesReceived == expectedBytes` or throws to force a retry, (b) `SerialFileWriter` records the first disk-write error and the chunk queries it at completion rather than swallowing it, (c) post-download `stat` confirms the zip is exactly `totalBytes`.
-- **Registry patches** — admit int4-only models (upstream drops them), bump `RUNTIME_VERSION` to `1.14.0` so HF resolves the tag where `int4-apple` lives, expose `setModelUrlOverride(slug, {proApple, url})` so apps can route specific models through private CDNs.
-- **HTTP/3 opt-in + observability**: `URLRequest.assumesHTTP3Capable = true` on every request; per-transaction `URLSessionTaskMetrics` logging for protocol/remote/reused signals; live `[cactus.dl.parallel.rate]` log every 2s with instantaneous and average MB/s so you don't have to wait for a chunk to finish to see throughput.
+## Repo orientation
 
-Worth upstreaming (see TODO in `HACKATHON.md`).
+| Where | What |
+|---|---|
+| `App.tsx`, `ShaderWebView.tsx`, `cannedShaders.ts` | The app |
+| `PSTACK.md` | Optimizer algorithm (model-agnostic) |
+| `evals/FINDINGS.md` | Round-by-round writeup of the overnight run |
+| `evals/` | Raw + scored data, scripts, hill specs |
+| `patches/cactus-react-native+1.13.0.patch` | All Cactus patches |
+| `HACKATHON.md` | Cactus patch deep-dive + Metro-over-ngrok dev setup |
+| `eval_server/README.md` | Phone-as-runtime / Mac-as-driver eval rig (cloudflared broker) |
 
----
+## Tech stack
 
-## Dev notes
-
-See [`HACKATHON.md`](HACKATHON.md) for:
-
-- Running Metro from behind a hostile network (ngrok tunnel + AppDelegate wiring).
-- Full writeup of the `cactus-react-native` patch (registry fixes + parallel-Range downloader).
-
-See [`eval_server/README.md`](eval_server/README.md) for running prompt-eval batches against the phone's on-device Gemma (broker + cloudflared tunnel + per-concept hill climbs).
+- React Native 0.85 (iOS), TypeScript
+- [Cactus](https://cactuscompute.com/) for on-device inference (`cactus-react-native@1.13.0` + patches)
+- Gemma 4 E2B INT4 (apple variant; ANE-prefill via `.mlpackage` Core ML files)
+- WebGL 1 / GLSL ES 1.00 in WKWebView for shader rendering
+- `glslangValidator` (Khronos reference compiler) for offline scoring
 
 ---
 
 ## Upstream context (from cactus-compute/voice-agents-hack)
+
+This repo is a fork of [cactus-compute/voice-agents-hack](https://github.com/cactus-compute/voice-agents-hack). The original hackathon brief, preserved verbatim:
 
 ### Context
 - Cactus (YC S25) is a low-latency engine for mobile devices & wearables.
