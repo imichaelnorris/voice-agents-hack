@@ -564,12 +564,25 @@ function ReviewScreen({
     };
   }, []);
 
+  const [inferenceDebug, setInferenceDebug] = useState<string>('');
+
   const askGemma = useCallback(
     async (prompt: string) => {
       if (!photoUri || !prompt.trim()) return;
       setIsGenerating(true);
       setResponse('');
       setError(null);
+      const startedAt = Date.now();
+      let tokenCount = 0;
+      let firstTokenAt: number | null = null;
+      const header = [
+        `── askGemma start @ ${new Date(startedAt).toISOString()}`,
+        `prompt: ${JSON.stringify(prompt)}`,
+        `photoUri: ${photoUri}`,
+        `lm.isDownloaded=${lm.isDownloaded} lm.isDownloading=${lm.isDownloading} progress=${lm.downloadProgress ?? 'n/a'}`,
+        `model=${VISION_MODEL} opts=${JSON.stringify(VISION_MODEL_OPTIONS)}`,
+      ].join('\n');
+      setInferenceDebug(header);
       try {
         const messages: CactusLMMessage[] = [
           { role: 'system', content: SHADER_SYSTEM_PROMPT },
@@ -583,11 +596,50 @@ function ReviewScreen({
           messages,
           options: { maxTokens: 512, temperature: 0.2 },
           onToken: (token: string) => {
+            if (firstTokenAt == null) firstTokenAt = Date.now();
+            tokenCount += 1;
             setResponse(prev => prev + token);
           },
         });
+        const doneAt = Date.now();
+        setInferenceDebug(
+          [
+            header,
+            `── askGemma ok (+${doneAt - startedAt}ms)`,
+            `first token: ${firstTokenAt ? `${firstTokenAt - startedAt}ms` : 'never'}`,
+            `tokens: ${tokenCount}`,
+          ].join('\n'),
+        );
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        const failedAt = Date.now();
+        const msg = err instanceof Error ? err.message : String(err);
+        const stack = err instanceof Error ? err.stack : undefined;
+        let errJson = '';
+        try {
+          errJson = JSON.stringify(
+            err,
+            err && typeof err === 'object'
+              ? Object.getOwnPropertyNames(err as object)
+              : undefined,
+            2,
+          );
+        } catch {}
+        console.error('[askGemma] lm.complete failed', err);
+        setInferenceDebug(
+          [
+            header,
+            `── askGemma FAILED (+${failedAt - startedAt}ms)`,
+            `first token: ${firstTokenAt ? `${firstTokenAt - startedAt}ms` : 'never'}`,
+            `tokens before failure: ${tokenCount}`,
+            `error name: ${err instanceof Error ? err.name : typeof err}`,
+            `error message: ${msg}`,
+            stack ? `stack:\n${stack}` : '',
+            errJson && errJson !== '{}' ? `error object:\n${errJson}` : '',
+          ]
+            .filter(Boolean)
+            .join('\n'),
+        );
+        setError(msg);
       } finally {
         setIsGenerating(false);
       }
@@ -695,17 +747,20 @@ function ReviewScreen({
   }, [photoUri]);
 
   const handleCopyDebug = useCallback(async () => {
-    const text = response || '';
-    if (!text) {
+    const parts = [
+      inferenceDebug ? `[inference]\n${inferenceDebug}` : '',
+      response ? `[response]\n${response}` : '',
+    ].filter(Boolean);
+    if (parts.length === 0) {
       Alert.alert('Nothing to copy', 'The model has not produced any output yet.');
       return;
     }
     try {
-      await Share.share({ message: text });
+      await Share.share({ message: parts.join('\n\n') });
     } catch (err) {
       Alert.alert('Share failed', err instanceof Error ? err.message : String(err));
     }
-  }, [response]);
+  }, [inferenceDebug, response]);
 
   const shaderSource = useMemo(
     () =>
@@ -919,6 +974,11 @@ function ReviewScreen({
             style={styles.debugBody}
             contentContainerStyle={styles.debugBodyContent}
           >
+            {inferenceDebug ? (
+              <Text selectable style={[styles.debugText, styles.debugInferenceText]}>
+                {inferenceDebug}
+              </Text>
+            ) : null}
             <Text selectable style={styles.debugText}>
               {response || '(no output yet)'}
             </Text>
@@ -1487,6 +1547,13 @@ const styles = StyleSheet.create({
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
     fontSize: 13,
     lineHeight: 20,
+  },
+  debugInferenceText: {
+    color: '#fbbf24',
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
 
   evalTopBar: {
