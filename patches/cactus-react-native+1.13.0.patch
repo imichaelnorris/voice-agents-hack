@@ -1,27 +1,33 @@
 diff --git a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-index dd342cc..6f1aa8f 100644
+index dd342cc..26323b3 100644
 --- a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
 +++ b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-@@ -92,8 +92,26 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
-         }
+@@ -81,19 +81,24 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
+         throw RuntimeError.error(withMessage: "Invalid URL")
        }
  
-+      // Foreground .default session. We previously used
-+      // URLSessionConfiguration.background so the download survived app
-+      // suspension, but iOS throttles background sessions to low-single-digit
-+      // Mbps regardless of what the network supports. Keep the app in the
-+      // foreground during install; if the user backgrounds mid-download
-+      // we'll get NSURLErrorTimedOut (-1001) and the JS-side retry loop
-+      // picks up from zero.
+-      var lastPct: Double = -1
++      // Throttle progress callbacks: at most one callback per 250 ms, regardless
++      // of how often didWriteData fires. Previous code dispatched to main on
++      // every didWriteData and only filtered by 1% inside the dispatched block,
++      // so a fast connection was queueing thousands of main-queue blocks per
++      // second. Testing whether this alone unblocks single-stream throughput
++      // before reaching for parallel Range requests.
++      let progressState = ProgressThrottle()
+       let delegate = DownloadProgressDelegate { p in
+-        DispatchQueue.main.async {
+-          let pct = floor(min(max(0, p), 1) * 99) / 100
+-          if pct - lastPct >= 0.01 {
+-            callback?(pct)
+-            lastPct = pct
+-          }
+-        }
++        progressState.maybeEmit(p, callback: callback)
+       }
+ 
        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
 -      let task = session.downloadTask(with: url)
 +
-+      // Opt the request into HTTP/3. Safari gets ~300 Mbps on this URL
-+      // while NSURLSession.default has been doing 2–3 Mbps — the most
-+      // likely culprit is protocol negotiation: Safari negotiates h3,
-+      // NSURLSession falls back to a degraded h2/h1.1 path. assumesHTTP3Capable
-+      // tells URLSession to try QUIC even without an Alt-Svc advertisement.
-+      // See the metrics log below to confirm what actually got negotiated.
 +      var request = URLRequest(url: url)
 +      if #available(iOS 15.0, *) {
 +        request.assumesHTTP3Capable = true
@@ -30,7 +36,38 @@ index dd342cc..6f1aa8f 100644
  
        callback?(0.0)
  
-@@ -236,6 +254,25 @@ private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, UR
+@@ -181,6 +186,30 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
+   }
+ }
+ 
++// Time-based progress throttle. URLSession calls didWriteData on every
++// received buffer; on a fast link that can be thousands of calls per second.
++// We were marshalling each one to the main queue via DispatchQueue.async,
++// which on a fast connection backs up the main queue and very likely caps
++// our read-side throughput. This bounds emission to one callback per 250 ms.
++private final class ProgressThrottle {
++  private let queue = DispatchQueue(label: "cactus.dl.progress")
++  private var lastEmittedAt: TimeInterval = 0
++  private var lastPct: Double = -1
++  private let intervalSec: TimeInterval = 0.25
++
++  func maybeEmit(_ p: Double, callback: ((Double) -> Void)?) {
++    queue.async {
++      let now = CACurrentMediaTime()
++      if now - self.lastEmittedAt < self.intervalSec { return }
++      let pct = floor(min(max(0, p), 1) * 99) / 100
++      if pct - self.lastPct < 0.01 { return }
++      self.lastEmittedAt = now
++      self.lastPct = pct
++      DispatchQueue.main.async { callback?(pct) }
++    }
++  }
++}
++
+ private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, URLSessionTaskDelegate
+ {
+   private let progressHandler: (Double) -> Void
+@@ -236,6 +265,25 @@ private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, UR
      }
    }
    

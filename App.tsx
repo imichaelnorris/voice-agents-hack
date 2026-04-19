@@ -254,6 +254,70 @@ function CopyIcon({ color = '#fff', size = 22 }: { color?: string; size?: number
   );
 }
 
+function CameraIconLarge({
+  color = '#fff',
+  size = 88,
+}: {
+  color?: string;
+  size?: number;
+}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+      <Path
+        d="M10 18h8l3-5h22l3 5h8a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V22a4 4 0 0 1 4-4z"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M32 40a8 8 0 1 0 0-16 8 8 0 0 0 0 16z"
+        stroke={color}
+        strokeWidth={2.2}
+      />
+      <Path d="M48 24h4" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function SpeechIconLarge({
+  color = '#fff',
+  size = 88,
+}: {
+  color?: string;
+  size?: number;
+}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+      <Path
+        d="M32 30a5 5 0 0 0 5-5v-7a5 5 0 1 0-10 0v7a5 5 0 0 0 5 5z"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M22 24a10 10 0 0 0 20 0"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+      />
+      <Path d="M32 34v7" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+      <Path
+        d="M20 48h24"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M8 14l4 2M8 26l4-1M8 38l4-2M56 14l-4 2M56 26l-4-1M56 38l-4-2"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        opacity={0.55}
+      />
+    </Svg>
+  );
+}
+
 function RaceBar({
   label,
   progress,
@@ -315,7 +379,18 @@ async function ensureMicPermission(): Promise<boolean> {
   return granted === PermissionsAndroid.RESULTS.GRANTED;
 }
 
-type Screen = 'camera' | 'review' | 'promptEval';
+type Screen = 'tutorial' | 'camera' | 'review' | 'promptEval';
+
+// Suggested prompts shown on the tutorial's second screen. These double as
+// guardrails for demo-time judges who might otherwise freeze up at the mic.
+// They intentionally match the vibe the model handles well (known style
+// transfers, simple color/texture shifts) rather than asking for scene
+// understanding that it doesn't do reliably.
+const TUTORIAL_PROMPTS = [
+  'make it feel like a dream',
+  'vaporwave sunset',
+  'glitchy VHS',
+];
 
 // Cloudflared quick tunnel pointing at eval_server/server.mjs (localhost:9000).
 // Quick-tunnel URLs rotate every restart — update this string and rebuild
@@ -344,7 +419,7 @@ type LmHook = ReturnType<typeof useCactusLM>;
 type SttHook = ReturnType<typeof useCactusSTT>;
 
 function Root() {
-  const [screen, setScreen] = useState<Screen>('camera');
+  const [screen, setScreen] = useState<Screen>('tutorial');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
 
   // Held at the top level so download state survives navigation between
@@ -379,11 +454,16 @@ function Root() {
     setScreen('camera');
   }, []);
 
+  if (screen === 'tutorial') {
+    return <TutorialScreen onDone={() => setScreen('camera')} />;
+  }
   if (screen === 'camera') {
     return (
       <CameraScreen
         onPhoto={handlePhotoTaken}
         onPromptEval={() => setScreen('promptEval')}
+        lm={lm}
+        stt={stt}
       />
     );
   }
@@ -393,12 +473,97 @@ function Root() {
   return <ReviewScreen photoUri={photoUri} onDiscard={handleDiscard} lm={lm} stt={stt} />;
 }
 
+function TutorialScreen({ onDone }: { onDone: () => void }) {
+  const insets = useSafeAreaInsets();
+  const [page, setPage] = useState<0 | 1>(0);
+
+  const isLast = page === 1;
+  const handleNext = () => (isLast ? onDone() : setPage(1));
+  const handleBack = () => setPage(0);
+
+  return (
+    <View style={styles.screen}>
+      <Pressable
+        onPress={onDone}
+        hitSlop={12}
+        style={[styles.tutorialSkip, { top: insets.top + 12 }]}
+      >
+        <Text style={styles.tutorialSkipText}>Skip</Text>
+      </Pressable>
+
+      <View
+        style={[
+          styles.tutorialBody,
+          { paddingTop: insets.top + 64, paddingBottom: insets.bottom + 32 },
+        ]}
+      >
+        <View style={styles.tutorialIllustration}>
+          {page === 0 ? (
+            <CameraIconLarge color="#f5f7fa" size={104} />
+          ) : (
+            <SpeechIconLarge color="#f5f7fa" size={104} />
+          )}
+        </View>
+
+        <Text style={styles.tutorialStep}>Step {page + 1} of 2</Text>
+        <Text style={styles.tutorialTitle}>
+          {page === 0 ? 'Take a photo' : 'Say how it should look'}
+        </Text>
+        <Text style={styles.tutorialBodyText}>
+          {page === 0
+            ? 'Point your camera at anything in front of you — a face, a plant, the room. Tap the shutter to capture.'
+            : 'Gemma 4 writes shaders for your photo from your prompt — running fully on-device. Tap the mic and describe the effect you want.'}
+        </Text>
+
+        {page === 1 ? (
+          <View style={styles.tutorialChipsWrap}>
+            <Text style={styles.tutorialTrySaying}>Try saying</Text>
+            <View style={styles.tutorialChips}>
+              {TUTORIAL_PROMPTS.map(prompt => (
+                <View key={prompt} style={styles.tutorialChip}>
+                  <Text style={styles.tutorialChipText}>“{prompt}”</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        <View style={styles.tutorialSpacer} />
+
+        <View style={styles.tutorialDots}>
+          <View style={[styles.tutorialDot, page === 0 && styles.tutorialDotActive]} />
+          <View style={[styles.tutorialDot, page === 1 && styles.tutorialDotActive]} />
+        </View>
+
+        <View style={styles.tutorialButtonRow}>
+          {isLast ? (
+            <Pressable onPress={handleBack} style={styles.tutorialSecondaryButton} hitSlop={8}>
+              <Text style={styles.tutorialSecondaryButtonText}>Back</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.tutorialSecondaryPlaceholder} />
+          )}
+          <Pressable onPress={handleNext} style={styles.tutorialPrimaryButton}>
+            <Text style={styles.tutorialPrimaryButtonText}>
+              {isLast ? 'Get started' : 'Next'}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function CameraScreen({
   onPhoto,
   onPromptEval,
+  lm,
+  stt,
 }: {
   onPhoto: (uri: string) => void;
   onPromptEval: () => void;
+  lm: LmHook;
+  stt: SttHook;
 }) {
   const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState(false);
@@ -437,6 +602,21 @@ function CameraScreen({
     }
   }, [busy, onPhoto, photoOutput]);
 
+  // Surface the one-time model download so judges don't stare at a dead camera
+  // on first launch. Gemma dominates (~1–2 hr); whisper finishes in seconds.
+  // Cactus caches on disk, so subsequent launches skip this entirely.
+  const downloadBanner = !lm.isDownloaded
+    ? {
+        label: 'Downloading Gemma 4 E2B · one-time',
+        progress: lm.downloadProgress ?? 0,
+      }
+    : !stt.isDownloaded
+    ? {
+        label: 'Downloading speech model · one-time',
+        progress: stt.downloadProgress ?? 0,
+      }
+    : null;
+
   if (!hasPermission) {
     return (
       <View style={[styles.screen, styles.center]}>
@@ -467,7 +647,28 @@ function CameraScreen({
       />
 
       <View style={[styles.cameraTopBar, { paddingTop: insets.top + 8 }]}>
-        <View style={{ flex: 1 }} />
+        {downloadBanner ? (
+          <View style={styles.downloadBanner}>
+            <View style={styles.downloadBannerRow}>
+              <Text style={styles.downloadBannerLabel} numberOfLines={1}>
+                {downloadBanner.label}
+              </Text>
+              <Text style={styles.downloadBannerPct}>
+                {Math.round(downloadBanner.progress * 100)}%
+              </Text>
+            </View>
+            <View style={styles.downloadBannerTrack}>
+              <View
+                style={[
+                  styles.downloadBannerFill,
+                  { width: `${Math.round(downloadBanner.progress * 100)}%` },
+                ]}
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
         <Pressable
           onPress={() => setPosition(p => (p === 'back' ? 'front' : 'back'))}
           style={styles.flipButton}
@@ -1413,6 +1614,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  downloadBanner: {
+    flex: 1,
+    marginRight: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    gap: 6,
+  },
+  downloadBannerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  downloadBannerLabel: {
+    flex: 1,
+    color: '#e5e7eb',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  downloadBannerPct: {
+    color: '#e5e7eb',
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
+    marginLeft: 8,
+  },
+  downloadBannerTrack: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
+  },
+  downloadBannerFill: {
+    height: '100%',
+    backgroundColor: '#f5f7fa',
+    borderRadius: 2,
+  },
+
   cameraBottomBar: {
     position: 'absolute',
     left: 0,
@@ -1764,5 +2005,128 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
     lineHeight: 17,
+  },
+
+  tutorialBody: {
+    flex: 1,
+    paddingHorizontal: 28,
+  },
+  tutorialSkip: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  tutorialSkipText: {
+    color: '#9ba1a6',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tutorialIllustration: {
+    alignSelf: 'center',
+    width: 168,
+    height: 168,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 40,
+  },
+  tutorialStep: {
+    color: '#9ba1a6',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  tutorialTitle: {
+    color: '#f5f7fa',
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 14,
+  },
+  tutorialBodyText: {
+    color: '#c8cbce',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  tutorialChipsWrap: {
+    marginTop: 28,
+    gap: 12,
+  },
+  tutorialTrySaying: {
+    color: '#9ba1a6',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  tutorialChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tutorialChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  tutorialChipText: {
+    color: '#f5f7fa',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  tutorialSpacer: { flex: 1, minHeight: 24 },
+  tutorialDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  tutorialDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+  },
+  tutorialDotActive: {
+    backgroundColor: '#f5f7fa',
+    width: 22,
+  },
+  tutorialButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  tutorialSecondaryPlaceholder: { flex: 0, width: 0 },
+  tutorialSecondaryButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  tutorialSecondaryButtonText: {
+    color: '#f5f7fa',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  tutorialPrimaryButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 14,
+    backgroundColor: '#f5f7fa',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tutorialPrimaryButtonText: {
+    color: '#0f1114',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

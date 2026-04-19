@@ -181,7 +181,7 @@ Batches live in `eval_server/batches/<name>.json` with optional `systemPrompt` a
 | 2 (Ollama) | full-precision gemma4:e2b | + clamp-RGB directive | eyeball mixed | introduced regressions |
 | 3 (phone) | iPhone INT4 + ANE | round-2 prompt (current `SHADER_SYSTEM_PROMPT` in `App.tsx`) | **27 / 50 = 54%** | baseline; underwater, vignette, neon, pixelate, thermal, glitch all <60% |
 | 3.5 (Cactus on Mac) | same INT4 weights as phone, CPU only | same as round 3 | **34 / 50 = 68%** | Mac is +14% absolute over phone with identical weights — sampler nondeterminism + CPU vs ANE small differences. Failure *patterns* match, so prompt fixes here should transfer; absolute numbers won't. |
-| 4 Variant A (Cactus on Mac) | same | + 6 explicit GLSL ES 1.00 type rules in system prompt (`pow(vec3,scalar)`, `mix` return type, `vec3 = scalar`, alpha on gl_FragColor, no redeclare, `vec3(0.0)` not `0.0`) | **in progress** (Mac, batch `round4-typerules.json`) | hypothesis: type-rule class is the dominant compile-fail mode — should jump to ~42–45/50 if so |
+| 4 Variant A (Cactus on Mac) | same | + 6 explicit GLSL ES 1.00 type rules in system prompt (`pow(vec3,scalar)`, `mix` return type, `vec3 = scalar`, alpha on gl_FragColor, no redeclare, `vec3(0.0)` not `0.0`) | **29 / 50 = 58% — REGRESSION** vs baseline 68% | declarative rules don't bind. Glitch dropped 4/5 → 0/5 with the same `vec3 = float` error the rule explicitly forbids (the model literally writes `vec3 red = color.r;` in glitch-r1). Crt picked up new failure modes (`undeclared identifier`, `redefinition`) — the longer system prompt seems to push the model toward more elaborate code with more places to mess up. |
 
 ## Dominant failure modes (counted from round 3)
 
@@ -198,13 +198,16 @@ These are what the type-rules system prompt targets:
 
 Type-rule class (top 4 rows) accounts for the bulk of compile failures. Round 4 Variant A targets exactly this. If it works, round 5 adds canonical-formula few-shots for the bottom-two semantic-miss rows.
 
-## Round 4 plan
+## Round 4 plan (revised after Variant A regressed)
 
-- **Variant A** (running now): type rules only. Measures: does explicit GLSL syntax instruction close the compile gap?
-- **Variant B** (queued, not yet written): A + few-shot the canonical sepia matrix + thermal LUT. Measures: do few-shot examples for canonical formulas eliminate the ad-hoc-formula failures?
-- **Variant C** (queued): A + B + a single-tap-bloom example for "glow"-style prompts. Measures: does few-shot architecture transfer across concept families?
+Variant A taught us: **declarative type rules don't bind on this model.** The model echoes the constraint phrase but still emits the forbidden pattern. Pivot to in-context demonstration.
 
-After Round 4 we re-validate the winner on the iPhone. Phone numbers will be lower than Mac numbers but the relative ordering between variants should hold — that's what the iteration loop is buying us.
+- **Variant A** (done): type rules in prose. **58% — regression.** Cut.
+- **Variant B** (next): one full canonical example shader prepended as a prior assistant turn. Pick a concept that exercises every rule we care about (e.g. invert with explicit `vec4(1.0 - rgb, 1.0)` final, no scalar/vec confusion). Measures: does showing > telling close the compile gap?
+- **Variant C** (queued): B + a second example (concept that uses `mix`, `pow(vec3, vec3(...))`, multi-tap sample) so the model has two patterns to imitate.
+- **Variant D** (queued): A + B — combine declarative rules with examples in case the rules help when grounded by an example.
+
+After we land a winner on Mac, validate on the iPhone. Phone numbers will be lower than Mac numbers but the relative ordering between variants should hold — that's what the iteration loop is buying us.
 
 ## Files to know
 
