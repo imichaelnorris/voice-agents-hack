@@ -4,6 +4,8 @@
 
 Snap a photo, hold the mic, describe the look you want. **Gemma 4 E2B** writes a fragment shader on the fly and renders it over your photo — entirely on-device, no cloud round-trip.
 
+[![Watch the demo](https://img.youtube.com/vi/CwhqcjD1xUU/maxresdefault.jpg)](https://www.youtube.com/watch?v=CwhqcjD1xUU)
+
 > Tested on iPhone 17 Pro only. Other devices (including iPad) are untested.
 
 ## Demo flow
