@@ -1,6 +1,6 @@
 # DeepShades
 
-> **Speak a photo filter into existence.**
+### Speak a photo filter into existence.
 
 Snap a photo, hold the mic, describe the look you want. **Gemma 4 E2B** writes a fragment shader on the fly and renders it over your photo — entirely on-device, no cloud round-trip.
 
@@ -21,7 +21,7 @@ This submission is three artifacts in one repo.
 
 ### 1. The app
 
-A React Native iOS app doing voice → on-device LLM → live GLSL rendering. **One model handles everything**: Gemma 4 E2B INT4 (~4.68 GB Cactus apple bundle) does both audio transcription (its multimodal audio encoder) and shader generation. No separate Whisper, no cloud calls, no second download.
+A React Native iOS app doing voice → on-device LLM → live GLSL rendering. **One model handles everything**: Gemma 4 E2B INT4 (~4.68 GB Cactus apple bundle) does both audio transcription (its multimodal audio encoder) and shader generation.
 
 Code: `App.tsx`, `ShaderWebView.tsx`, `cannedShaders.ts`.
 
@@ -40,6 +40,7 @@ Coordinate-descent algorithm for hill-climbing a single system prompt against a 
 The Cactus model downloader was the bottleneck on first launch — 4.68 GB at ~10 MB/s on a network where Safari pulled the same URL at ~100 MB/s. Patches in [`patches/cactus-react-native+1.13.0.patch`](patches/cactus-react-native+1.13.0.patch) (auto-applied via `postinstall`):
 
 - **Shared-session parallel-Range downloader.** 6 concurrent `URLSessionDataTask`s sharing one `URLSession` so HTTP/3 multiplexes the range streams over a single QUIC connection — one handshake, one BBR slow-start, no stream-level head-of-line blocking. **Result: ~80 MB/s from R2 (HTTP/3) vs ~60 MB/s from HuggingFace (HTTP/1.1 origin)**, ~6× upstream's single-stream throughput.
+- **Model hosted on Cloudflare R2 with H3 enabled.** HuggingFace's origin (AWS S3) negotiates HTTP/1.1 only — a hard ceiling on parallel throughput regardless of how many sockets you open. We mirror the Gemma 4 E2B apple bundle to a Cloudflare R2 bucket because it consistently delivered **~30% faster cold-start downloads** for our users vs pulling directly from HF. The `setModelUrlOverride()` registry patch (below) is what makes that mirror swappable per-app without forking Cactus.
 - **Correctness defenses** for parallel chunks. A clean mid-body H3 disconnect resolves `didCompleteWithError` with `nil`, leaving zeros where bytes should be — symptom: next launch fails with *"Cannot map file: embed_tokens_per_layer.weights"*. Three guards close the gap: per-chunk `bytesReceived == expectedBytes` check, `SerialFileWriter` records first-write-error and surfaces it, post-download `stat` confirms exact byte count.
 - **Registry patches**: admit int4-only models (upstream drops them), bump `RUNTIME_VERSION` to `1.14.0` for HF tag resolution, expose `setModelUrlOverride(slug, …)` for routing through private CDNs.
 - **HTTP/3 opt-in + observability**: `URLRequest.assumesHTTP3Capable = true` everywhere, per-transaction `URLSessionTaskMetrics` logging, live `[cactus.dl.parallel.rate]` log every 2 s.
