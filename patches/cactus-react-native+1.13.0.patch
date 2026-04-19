@@ -1,26 +1,21 @@
 diff --git a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-index dd342cc..ef3064f 100644
+index dd342cc..f9bdced 100644
 --- a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
 +++ b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-@@ -92,7 +92,17 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
+@@ -92,6 +92,13 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
          }
        }
  
--      let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
-+      // Background URLSession so the download keeps running when the user
-+      // switches away from the app. Foreground (.default) sessions get
-+      // suspended along with the app and time out. The identifier must be
-+      // unique per session; we scope it to this model download.
-+      let config = URLSessionConfiguration.background(
-+        withIdentifier: "com.cactus.download.\(model).\(UUID().uuidString)"
-+      )
-+      config.isDiscretionary = false
-+      config.sessionSendsLaunchEvents = false
-+      config.allowsCellularAccess = true
-+      let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
++      // Foreground .default session. We previously used
++      // URLSessionConfiguration.background so the download survived app
++      // suspension, but iOS throttles background sessions to low-single-digit
++      // Mbps regardless of what the network supports. Keep the app in the
++      // foreground during install; if the user backgrounds mid-download
++      // we'll get NSURLErrorTimedOut (-1001) and the JS-side retry loop
++      // picks up from zero.
+       let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
        let task = session.downloadTask(with: url)
  
-       callback?(0.0)
 diff --git a/node_modules/cactus-react-native/lib/module/index.js b/node_modules/cactus-react-native/lib/module/index.js
 index 9e72096..1c15d98 100644
 --- a/node_modules/cactus-react-native/lib/module/index.js
