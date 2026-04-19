@@ -34,7 +34,7 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Take a photo and ask Gemma about it.</string>
+	<string>Take a photo and ask Gemma to create a filter for it.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Record your voice prompt. Audio is transcribed on-device.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

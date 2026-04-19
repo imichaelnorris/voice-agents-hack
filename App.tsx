@@ -570,6 +570,58 @@ function Root() {
     return () => clearTimeout(id);
   }, [stt.isDownloaded, stt.isDownloading, stt.download]);
 
+  // Dev verification: once the Gemma model flips to downloaded, walk the
+  // extracted dir and compare file count + total size + a known key file
+  // against the reference manifest extracted from the HF zip locally. This
+  // isolates whether our downloader/unzip produced the same on-disk state
+  // that stock cactus would have.
+  //   Expected (from unzip of the HF 4.68 GB zip, sha256 = 3a6e33eb…):
+  //     files = 1973, total = 6_751_922_533 bytes,
+  //     embed_tokens_per_layer.weights = 2_495_610_976 bytes
+  useEffect(() => {
+    if (!__DEV__ || !lm.isDownloaded) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const modelDir =
+          `${RNFS.DocumentDirectoryPath}/cactus/models/gemma-4-e2b-it-int4-pro`;
+        const walk = async (dir: string): Promise<{ count: number; total: number; keyFile?: number }> => {
+          const entries = await RNFS.readDir(dir);
+          let count = 0, total = 0, keyFile: number | undefined;
+          for (const e of entries) {
+            if (e.isDirectory()) {
+              const sub = await walk(e.path);
+              count += sub.count;
+              total += sub.total;
+              keyFile = keyFile ?? sub.keyFile;
+            } else {
+              count += 1;
+              total += Number(e.size ?? 0);
+              if (e.name === 'embed_tokens_per_layer.weights') {
+                keyFile = Number(e.size ?? 0);
+              }
+            }
+          }
+          return { count, total, keyFile };
+        };
+        const r = await walk(modelDir);
+        if (cancelled) return;
+        const filesOk = r.count === 1973;
+        const totalOk = r.total === 6_751_922_533;
+        const keyOk = r.keyFile === 2_495_610_976;
+        console.log(
+          `[model.verify] files=${r.count} (${filesOk ? 'OK' : 'MISMATCH expected=1973'}) ` +
+          `total=${r.total} (${totalOk ? 'OK' : 'MISMATCH expected=6751922533'}) ` +
+          `embed_tokens_per_layer=${r.keyFile ?? 'MISSING'} ` +
+          `(${keyOk ? 'OK' : 'MISMATCH expected=2495610976'})`,
+        );
+      } catch (err) {
+        console.log('[model.verify] walk failed:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [lm.isDownloaded]);
+
   const handlePhotoTaken = useCallback((uri: string) => {
     setPhotoUri(uri);
     setScreen('review');
