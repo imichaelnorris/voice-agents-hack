@@ -1015,11 +1015,8 @@ function CameraScreen({
     }
   }, [busy, onPhoto]);
 
-  // Surface the one-time model download so judges don't stare at a dead camera
-  // on first launch. Gemma 4 E2B is the only model — ~4.68 GB, 1–2 hr on
-  // spotty Wi-Fi, then cached on disk so subsequent launches skip this.
-  // Same weights power both the shader generator and the audio transcription
-  // path, so there's no second download.
+  // Surface the one-time model download so the camera screen isn't dead
+  // while Cactus pulls weights. Cached on disk after the first launch.
   const elapsedSec =
     dlStartMs && isDownloadingAny ? Math.max(0, Math.floor((nowMs - dlStartMs) / 1000)) : 0;
   const formatElapsed = (s: number) =>
@@ -1608,6 +1605,10 @@ function ReviewScreen({
       const text = (res.response ?? '').trim();
       setTranscript(text);
       if (text) {
+        // Mirror the transcribed prompt into the text-input box so the
+        // refresh button (which re-sends `typed`) can re-run a spoken
+        // prompt without requiring the user to re-record.
+        setTyped(text);
         setManualShader(null);
         askGemma(text);
       } else {
