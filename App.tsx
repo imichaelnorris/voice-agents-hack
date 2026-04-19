@@ -491,28 +491,60 @@ function Root() {
     setScreen('camera');
   }, []);
 
-  if (screen === 'tutorial') {
-    return <TutorialScreen onDone={() => setScreen('camera')} />;
-  }
-  if (screen === 'camera') {
-    return (
+  // CameraScreen stays mounted under everything else so the capture
+  // session warms up while the user reads the tutorial. Without this the
+  // "Get started" tap stalls on `useCameraDevice` resolving + the AVCapture
+  // session starting cold. isActive is scoped to camera/tutorial so we
+  // pause (not teardown) when the user is in review or the eval screen.
+  const cameraActive = screen === 'camera' || screen === 'tutorial';
+  return (
+    <View style={styles.screen}>
       <CameraScreen
         onPhoto={handlePhotoTaken}
         onPromptEval={() => setScreen('promptEval')}
         lm={lm}
         stt={stt}
+        isActive={cameraActive}
       />
-    );
-  }
-  if (screen === 'promptEval') {
-    return <PromptEvalScreen onBack={() => setScreen('camera')} lm={lm} />;
-  }
-  return <ReviewScreen photoUri={photoUri} onDiscard={handleDiscard} lm={lm} stt={stt} />;
+      {screen === 'tutorial' ? (
+        <View style={StyleSheet.absoluteFill}>
+          <TutorialScreen onDone={() => setScreen('camera')} />
+        </View>
+      ) : null}
+      {screen === 'review' ? (
+        <View style={StyleSheet.absoluteFill}>
+          <ReviewScreen
+            photoUri={photoUri}
+            onDiscard={handleDiscard}
+            lm={lm}
+            stt={stt}
+          />
+        </View>
+      ) : null}
+      {screen === 'promptEval' ? (
+        <View style={StyleSheet.absoluteFill}>
+          <PromptEvalScreen onBack={() => setScreen('camera')} lm={lm} />
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 function TutorialScreen({ onDone }: { onDone: () => void }) {
   const insets = useSafeAreaInsets();
   const [page, setPage] = useState<0 | 1>(0);
+  const { hasPermission, requestPermission } = useCameraPermission();
+
+  // Prompt for camera access the moment the user lands on page 2. Page 2
+  // already explains that Gemma rewrites the photo, so the permission
+  // dialog has the right context behind it. It also gives the pre-mounted
+  // CameraScreen time to bring its capture session up before the user
+  // taps "Get started".
+  useEffect(() => {
+    if (page === 1 && !hasPermission) {
+      requestPermission().catch(() => {});
+    }
+  }, [page, hasPermission, requestPermission]);
 
   const isLast = page === 1;
   const handleNext = () => (isLast ? onDone() : setPage(1));
@@ -596,11 +628,13 @@ function CameraScreen({
   onPromptEval,
   lm,
   stt,
+  isActive = true,
 }: {
   onPhoto: (uri: string) => void;
   onPromptEval: () => void;
   lm: LmHook;
   stt: SttHook;
+  isActive?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const [busy, setBusy] = useState(false);
@@ -608,10 +642,6 @@ function CameraScreen({
   const device = useCameraDevice(position);
   const { hasPermission, requestPermission } = useCameraPermission();
   const photoOutput = usePhotoOutput();
-
-  useEffect(() => {
-    if (!hasPermission) requestPermission();
-  }, [hasPermission, requestPermission]);
 
   const handleTake = useCallback(async () => {
     if (busy) return;
@@ -703,7 +733,7 @@ function CameraScreen({
       <Camera
         style={StyleSheet.absoluteFill}
         device={device}
-        isActive={true}
+        isActive={isActive}
         outputs={[photoOutput]}
       />
 
