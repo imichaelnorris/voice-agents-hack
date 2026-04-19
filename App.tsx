@@ -641,22 +641,26 @@ function Root() {
 
   const handleShowTutorial = useCallback(() => setScreen('tutorial'), []);
 
-  // CameraScreen stays mounted under everything else so the capture
-  // session warms up while the user reads the tutorial. Without this the
-  // "Get started" tap stalls on `useCameraDevice` resolving + the AVCapture
-  // session starting cold. isActive is scoped to camera/tutorial so we
-  // pause (not teardown) when the user is in review or the eval screen.
+  // DIAGNOSTIC: previously CameraScreen stayed mounted under everything to
+  // keep the AVCaptureSession warm. Suspect that the paused-but-alive
+  // capture pipeline (preview IOSurfaces + photo output recycle pool) is
+  // contending with the model's working set during inference. Now fully
+  // unmount on review/eval so the session is torn down (not just paused).
+  // Cost: a cold-start delay on back-nav to camera.
+  const cameraMounted = screen === 'camera' || screen === 'tutorial';
   const cameraActive = screen === 'camera' || screen === 'tutorial';
   return (
     <View style={styles.screen}>
-      <CameraScreen
-        onPhoto={handlePhotoTaken}
-        onPromptEval={() => setScreen('promptEval')}
-        onShowTutorial={handleShowTutorial}
-        lm={lm}
-        stt={stt}
-        isActive={cameraActive}
-      />
+      {cameraMounted ? (
+        <CameraScreen
+          onPhoto={handlePhotoTaken}
+          onPromptEval={() => setScreen('promptEval')}
+          onShowTutorial={handleShowTutorial}
+          lm={lm}
+          stt={stt}
+          isActive={cameraActive}
+        />
+      ) : null}
       {screen === 'tutorial' ? (
         <View style={StyleSheet.absoluteFill}>
           <TutorialScreen onDone={handleTutorialDone} />
@@ -1149,23 +1153,36 @@ function ReviewScreen({
       ].join('\n');
       setInferenceDebug(header);
       try {
+        // Text-only inference: the photo is the WebGL texture at render
+        // time, not signal for shader code-gen. Passing it here would load
+        // the multimodal vision encoder (+hundreds of MB phys_footprint)
+        // and push the process past iOS's jetsam threshold for the int4
+        // weights we're already loading. Eval batches that ran all day
+        // were text-only and worked; the review screen used to pass the
+        // photo and got jetsam-killed mid-init.
         const messages: CactusLMMessage[] = [
           { role: 'system', content: SHADER_SYSTEM_PROMPT },
-          {
-            role: 'user',
-            content: prompt,
-            images: [photoUri],
-          },
+          { role: 'user', content: prompt },
         ];
+        let acc = '';
+        let lastFlush = 0;
         await lm.complete({
           messages,
           options: { maxTokens: 512, temperature: 0.2 },
           onToken: (token: string) => {
             if (firstTokenAt == null) firstTokenAt = Date.now();
             tokenCount += 1;
-            setResponse(prev => prev + token);
+            acc += token;
+            const now = Date.now();
+            // Throttle UI updates to ~10 Hz so the user still sees streaming
+            // text but we don't queue a re-render per token.
+            if (now - lastFlush > 100) {
+              lastFlush = now;
+              setResponse(acc);
+            }
           },
         });
+        setResponse(acc);
         const doneAt = Date.now();
         setInferenceDebug(
           [
@@ -1406,7 +1423,13 @@ function ReviewScreen({
 
   return (
     <View style={styles.screen}>
-      {photoUri ? (
+      {/* DIAGNOSTIC: photo background and ShaderWebView fully removed to
+          test whether the decoded UIImage (held by RCTImageLoader's cache)
+          is what tips the process past jetsam during lm.complete on this
+          screen. Eval screen runs the same prompt at ~1.4 GB; review
+          screen with the same prompt OOMs. If inference now completes
+          here too, the on-screen Image is the cause. */}
+      {false && photoUri && !isGenerating ? (
         photoFrame ? (
           <View style={[styles.photoFrame, photoFrame]}>
             <Image
@@ -1414,7 +1437,7 @@ function ReviewScreen({
               style={StyleSheet.absoluteFill}
               resizeMode="cover"
             />
-            {shaderSource && !isGenerating ? (
+            {shaderSource ? (
               <ShaderWebView
                 ref={shaderViewRef}
                 photoUri={photoUri}
@@ -1425,8 +1448,6 @@ function ReviewScreen({
             ) : null}
           </View>
         ) : (
-          // Image.getSize hasn't resolved yet — show the photo letterboxed
-          // via resizeMode="contain" so we never briefly stretch it.
           <Image
             source={{ uri: photoUri }}
             style={StyleSheet.absoluteFill}
