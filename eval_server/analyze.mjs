@@ -5,10 +5,35 @@
 // Usage: node eval_server/analyze.mjs <results.jsonl> [<more.jsonl> ...]
 
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 if (process.argv.length < 3) {
   console.error('usage: analyze.mjs <results.jsonl> [...]');
   process.exit(2);
+}
+
+// Compile a shader with the Khronos reference compiler. Returns
+// { compiled: bool, errors: string[] }. `glslangValidator` must be on PATH.
+const SHADER_TMP = path.join(os.tmpdir(), `analyze-${process.pid}.frag`);
+function compileGLSL(source) {
+  // GLSL ES 1.00 needs the version pragma, which the model rarely emits.
+  const withVersion = /^\s*#version\s/m.test(source) ? source : '#version 100\n' + source;
+  fs.writeFileSync(SHADER_TMP, withVersion);
+  try {
+    execFileSync('glslangValidator', ['-S', 'frag', SHADER_TMP], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    return { compiled: true, errors: [] };
+  } catch (err) {
+    const stdout = (err.stdout?.toString() ?? '') + (err.stderr?.toString() ?? '');
+    const errors = stdout
+      .split('\n')
+      .filter(line => line.startsWith('ERROR:') && !line.includes('compilation terminated'))
+      .map(line => line.replace(/^ERROR:\s*\d+:\d+:\s*/, '').trim());
+    return { compiled: false, errors };
+  }
 }
 
 const rows = [];
@@ -31,9 +56,15 @@ const CHECKS = [
 
 function classify(row) {
   if (row.error) return { kind: 'native_error', detail: row.error.slice(0, 100) };
-  const failed = CHECKS.filter(([_, fn]) => !fn(row)).map(([name]) => name);
-  if (failed.length === 0) return { kind: 'pass', detail: '' };
-  return { kind: 'shape_fail', detail: failed.join(',') };
+  const failedShape = CHECKS.filter(([_, fn]) => !fn(row)).map(([name]) => name);
+  if (failedShape.length > 0) return { kind: 'shape_fail', detail: failedShape.join(',') };
+  const compile = compileGLSL(row.response ?? '');
+  if (!compile.compiled) {
+    // Most informative error first; truncate to fit the table.
+    const firstError = (compile.errors[0] ?? 'unknown').slice(0, 80);
+    return { kind: 'compile_fail', detail: firstError, allErrors: compile.errors };
+  }
+  return { kind: 'pass', detail: '' };
 }
 
 const byConcept = new Map();

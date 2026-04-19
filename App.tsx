@@ -32,9 +32,20 @@ import {
 import {
   useCactusLM,
   useCactusSTT,
+  setModelUrlOverride,
   type CactusLMMessage,
 } from 'cactus-react-native';
 import { ShaderWebView, extractShader } from './ShaderWebView';
+
+// Route Gemma 4 E2B apple zip through Cloudflare. S3 (HF's origin) doesn't
+// speak HTTP/3, so assumesHTTP3Capable was a no-op there — metrics showed
+// proto=http/1.1. CF does advertise h3, so pointing at deepsteve.com should
+// give the h3 flag something to negotiate.
+if (__DEV__) {
+  setModelUrlOverride('gemma-4-e2b-it', {
+    proApple: 'https://deepsteve.com/gemma-4-e2b-it-int4-apple.zip',
+  });
+}
 import { CANNED_SHADERS } from './cannedShaders';
 
 const VISION_MODEL = 'gemma-4-e2b-it';
