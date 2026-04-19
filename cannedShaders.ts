@@ -96,6 +96,74 @@ void main() {
   gl_FragColor = vec4(color, 1.0);
 }`,
 
+  // Standard sepia-tone matrix — same coefficients you'll find in any
+  // photo-edit library. Each output channel is a fixed weighting of the
+  // three input channels (rather than the simpler luminance-times-tint
+  // approach, which loses chroma information).
+  Sepia: `precision mediump float;
+uniform sampler2D u_texture;
+uniform float u_time;
+uniform vec2 u_resolution;
+varying vec2 v_uv;
+
+void main() {
+  vec3 color = texture2D(u_texture, v_uv).rgb;
+  vec3 sepia;
+  sepia.r = dot(color, vec3(0.393, 0.769, 0.189));
+  sepia.g = dot(color, vec3(0.349, 0.686, 0.168));
+  sepia.b = dot(color, vec3(0.272, 0.534, 0.131));
+  gl_FragColor = vec4(clamp(sepia, 0.0, 1.0), 1.0);
+}`,
+
+  // Approximation of the X-Pro II Instagram filter: aggressive contrast
+  // around mid-grey, saturation boost, warm highlight / cool-greenish
+  // shadow split-tone, and a heavy vignette.
+  'X-Pro 2': `precision mediump float;
+uniform sampler2D u_texture;
+uniform float u_time;
+uniform vec2 u_resolution;
+varying vec2 v_uv;
+
+void main() {
+  vec3 color = texture2D(u_texture, v_uv).rgb;
+
+  // Contrast bump pivoted around 0.5.
+  color = (color - 0.5) * 1.25 + 0.5;
+
+  // Saturation boost.
+  float lum = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  color = mix(vec3(lum), color, 1.4);
+
+  // Split-tone: cool/green shadows, warm highlights. Linear blend by
+  // luminance so the curve doesn't band.
+  vec3 shadowTint    = vec3(-0.02, 0.05, 0.05);
+  vec3 highlightTint = vec3(0.05, 0.04, -0.05);
+  color += mix(shadowTint, highlightTint, lum);
+
+  // Strong vignette.
+  vec2 d = v_uv - 0.5;
+  float vig = 1.0 - dot(d, d) * 1.6;
+  color *= clamp(vig, 0.0, 1.0);
+
+  gl_FragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
+}`,
+
+  // Overexposure: animated. Exposure ramps up with u_time so the photo
+  // gradually blows out to white. (Gemma-generated; user-picked over the
+  // static version.)
+  Overexposure: `precision mediump float;
+uniform sampler2D u_texture;
+uniform float u_time;
+uniform vec2 u_resolution;
+varying vec2 v_uv;
+void main()
+{
+    vec4 color = texture2D(u_texture, v_uv);
+    float exposure = 1.0 + u_time * 0.5;
+    color = clamp(color * exposure, 0.0, 1.0);
+    gl_FragColor = color;
+}`,
+
   // Hand-written stand-in. Both eval rounds missed the "glow" intent —
   // just tinted magenta. This adds a real bloom approximation via
   // multiple offset samples averaged together.

@@ -397,10 +397,14 @@ type ShaderWebViewProps = {
   shader: string;
   style?: ViewStyle;
   onError?: (msg: string) => void;
+  // Fires once the WebGL program has linked and the photo texture has
+  // been uploaded — i.e. the shader definitely compiled and is rendering.
+  // Used by the parent to defer history-save until success.
+  onReady?: () => void;
 };
 
 export const ShaderWebView = forwardRef<ShaderWebViewHandle, ShaderWebViewProps>(
-  function ShaderWebView({ photoUri, shader, style, onError }, ref) {
+  function ShaderWebView({ photoUri, shader, style, onError, onReady }, ref) {
     const [imageDataUri, setImageDataUri] = useState<string | null>(null);
     const [readErr, setReadErr] = useState<string | null>(null);
     const webRef = useRef<WebView | null>(null);
@@ -549,6 +553,7 @@ export const ShaderWebView = forwardRef<ShaderWebViewHandle, ShaderWebViewProps>
               mime?: string;
             };
             if (data.type === 'error' && data.msg) onError?.(data.msg);
+            if (data.type === 'ready') onReady?.();
             if (data.type === 'capture' && data.data && pendingCapture.current) {
               const p = pendingCapture.current;
               pendingCapture.current = null;

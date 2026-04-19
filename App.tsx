@@ -66,33 +66,30 @@ const VISION_MODEL = 'gemma-4-e2b-it';
 // 2/5 → 5/5 and thermal 2/5 → 5/5). Net +6 absolute on the 50-prompt
 // baseline (34 → 37), no significant regressions outside sampling
 // noise.
-const SHADER_SYSTEM_PROMPT = `You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.
+const SHADER_SYSTEM_PROMPT = `You write GLSL ES 1.00 fragment shaders for WebGL 1 that apply a visual effect to a photo. Output ONLY the shader source — no markdown fences, no prose, no comments outside the shader.
 
-The shader runs over a photo. Declare these uniforms and the varying at the top of your output:
+Every shader MUST start with these declarations, in this order:
 
   precision mediump float;
-  uniform sampler2D u_texture;   // the input photo
-  uniform float u_time;          // seconds since start
-  uniform vec2 u_resolution;     // pixel dimensions
-  varying vec2 v_uv;             // texture coords, 0..1
+  uniform sampler2D u_texture;
+  uniform float u_time;
+  uniform vec2 u_resolution;
+  varying vec2 v_uv;
 
-Write the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.
+Then a \`void main()\` that reads the photo with \`texture2D(u_texture, v_uv)\`, transforms it according to the user's request, and writes the result to \`gl_FragColor\` clamped to [0, 1].
 
-Reference snippet for grid/block effects (square cells):
+First, classify the request:
+- If it matches a well-known photo/post-processing effect (sepia, invert, vignette, pixelate, chromatic aberration, CRT scanlines, thermal/false-color, posterize, fisheye, hue rotation, gaussian blur, halftone, duotone, etc.), use the classic algorithm for that effect — not a snippet from this prompt.
+- If it doesn't match a known effect, write a novel shader composed from the primitives below.
 
-  vec2 cell = vec2(16.0) / u_resolution;
-  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;
-  vec3 color = texture2D(u_texture, snapped).rgb;
+Primitives to compose from:
+- Color effects (sepia, invert, tint, desaturate, cross-process): transform the sampled RGB with a matrix, mix, or per-channel operation.
+- Distortion effects (pixelate, mosaic, ripple, fisheye): change the UV you sample from — e.g. snap \`v_uv\` to block centers, or add a sin/cos offset.
+- Split/offset effects (chromatic aberration, glitch, RGB shift): sample r, g, b separately at slightly different UVs.
+- Brightness/vignette: multiply the sampled color by a spatial or luminance-based factor.
+- Animated effects: drive the transform with \`u_time\` (seconds).
 
-Reference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):
-
-  float t = dot(texture2D(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));
-  vec3 col;
-  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);
-  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);
-  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);
-  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);
-  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);`;
+Do not invent uniforms that aren't declared. Do not use texture2D's result as a float. Do not leave gl_FragColor unset.`;
 // pro: true → pulls the -apple.zip variant that bundles the .mlpackage Core ML files.
 // Without these, Cactus falls back to CPU prefill and the vision encoder; with a 2B
 // multimodal model that means `std::bad_alloc` on capture-sized inputs.
@@ -108,6 +105,9 @@ const EXAMPLE_PROMPTS: { label: string; prompt: string }[] = [
   { label: 'Underwater', prompt: 'make it look like an underwater scene with caustics' },
   { label: 'Vignette', prompt: 'apply a vignette that darkens the edges' },
   { label: 'Neon', prompt: 'turn it into a neon glow' },
+  { label: 'Sepia', prompt: 'make it look like a sepia-toned vintage photo' },
+  { label: 'X-Pro 2', prompt: 'apply an X-Pro II Instagram filter — boosted contrast and saturation, warm highlights, strong vignette' },
+  { label: 'Overexposure', prompt: 'overexpose the photo — lift the exposure aggressively so highlights blow out to white, slight warm cast' },
 ];
 
 // 16kHz 16-bit mono PCM, matches Whisper's expected format.
@@ -1366,6 +1366,11 @@ function ReviewScreen({
   // surrounding ScrollView stops scrolling — otherwise a vertical drift
   // mid-swipe would scroll the list out from under the user.
   const [historyRowSwiping, setHistoryRowSwiping] = useState(false);
+  // Holds the (prompt, shader) from the most recent Gemma generation
+  // until the WebView confirms it compiled. On onReady → commit to
+  // history; on onError → drop. Keeps compile-failed shaders out of
+  // the saved list.
+  const pendingSaveRef = useRef<{ prompt: string; shader: string } | null>(null);
   const sortedHistory = useMemo(() => {
     // Favorites first (newest favorite at top), then non-favorites by
     // createdAt desc.
@@ -1517,7 +1522,9 @@ function ReviewScreen({
         setResponse(acc);
         const extracted = extractShader(acc);
         if (extracted) {
-          appendHistory(prompt, extracted);
+          // Defer: only save to history once the WebView confirms the
+          // shader compiled and linked. onReady commits; onError drops.
+          pendingSaveRef.current = { prompt, shader: extracted };
         }
         const doneAt = Date.now();
         setInferenceDebug(
@@ -1684,6 +1691,7 @@ function ReviewScreen({
 
   const handleCopyDebug = useCallback(async () => {
     const parts = [
+      error ? `[error]\n${error}` : '',
       inferenceDebug ? `[inference]\n${inferenceDebug}` : '',
       response ? `[response]\n${response}` : '',
     ].filter(Boolean);
@@ -1696,7 +1704,7 @@ function ReviewScreen({
     } catch (err) {
       Alert.alert('Share failed', err instanceof Error ? err.message : String(err));
     }
-  }, [inferenceDebug, response]);
+  }, [error, inferenceDebug, response]);
 
   const shaderSource = useMemo(
     () =>
@@ -1798,7 +1806,17 @@ function ReviewScreen({
                 photoUri={photoUri}
                 shader={shaderSource}
                 style={StyleSheet.absoluteFill}
-                onError={msg => setError(`Shader: ${msg}`)}
+                onError={msg => {
+                  setError(`Shader: ${msg}`);
+                  pendingSaveRef.current = null;
+                }}
+                onReady={() => {
+                  const p = pendingSaveRef.current;
+                  if (p) {
+                    appendHistory(p.prompt, p.shader);
+                    pendingSaveRef.current = null;
+                  }
+                }}
               />
             ) : null}
           </Pressable>
@@ -1825,37 +1843,43 @@ function ReviewScreen({
         <DebugIcon color="#fff" size={20} />
       </Pressable>
 
-      <Pressable
-        onPress={() => setIsOutputExpanded(v => !v)}
-        style={[styles.outputBox, { marginTop: insets.top + 12 }]}
+      <View
+        style={[
+          styles.outputBox,
+          { marginTop: insets.top + 12 },
+          // Give the box more room when the user wants to read the full
+          // shader source, otherwise stay short to leave the photo visible.
+          isOutputExpanded ? { maxHeight: '40%' } : null,
+        ]}
       >
-        <View
+        <Pressable
+          onPress={() => setIsOutputExpanded(v => !v)}
           style={{
-            position: 'absolute',
-            top: 8,
-            right: 8,
-            padding: 6,
-            zIndex: 1,
+            height: 34,
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            paddingRight: 14,
           }}
-          pointerEvents="none"
         >
           {isOutputExpanded ? (
             <CollapseIcon color="#9ba1a6" size={14} />
           ) : (
             <ExpandIcon color="#9ba1a6" size={14} />
           )}
-        </View>
+        </Pressable>
         <ScrollView
           ref={outputScrollRef}
-          contentContainerStyle={styles.outputContent}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, gap: 10 }}
           scrollEnabled={isOutputExpanded}
           showsVerticalScrollIndicator={isOutputExpanded}
           onContentSizeChange={() => {
-            // Keep the latest streamed token visible when expanded —
-            // ScrollView default-anchors to the top, so a streaming response
-            // would otherwise pin the first line. Skip when collapsed since
-            // there's nothing to scroll.
-            if (isOutputExpanded) outputScrollRef.current?.scrollToEnd({ animated: false });
+            // Auto-scroll the streaming tail into view ONLY while a
+            // generation is in flight. After it finishes, leave the scroll
+            // position at the top so the user can read "You: ..." first
+            // and scroll down through Gemma's full output themselves.
+            if (isOutputExpanded && isGenerating) {
+              outputScrollRef.current?.scrollToEnd({ animated: false });
+            }
           }}
         >
           {lm.isDownloading ? (
@@ -1909,7 +1933,7 @@ function ReviewScreen({
             </Text>
           ) : null}
         </ScrollView>
-      </Pressable>
+      </View>
 
       <ScrollView
         horizontal
@@ -2061,6 +2085,14 @@ function ReviewScreen({
             style={styles.debugBody}
             contentContainerStyle={styles.debugBodyContent}
           >
+            {error ? (
+              <Text
+                selectable
+                style={[styles.debugText, { color: '#f87171', marginBottom: 12 }]}
+              >
+                {'[error]\n' + error}
+              </Text>
+            ) : null}
             {inferenceDebug ? (
               <Text selectable style={[styles.debugText, styles.debugInferenceText]}>
                 {inferenceDebug}
@@ -2161,7 +2193,11 @@ function ReviewScreen({
                     onApply={() => {
                       setManualShader(entry.shader);
                       setTranscript(entry.prompt);
-                      setResponse('');
+                      // Pipe the shader source through setResponse so the
+                      // top output box shows it (same shape as a fresh
+                      // Gemma generation). Without this the box only
+                      // shows "You: ..." with no shader text.
+                      setResponse(entry.shader);
                       setError(null);
                       setShowHistory(false);
                     }}
