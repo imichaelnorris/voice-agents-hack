@@ -1847,91 +1847,91 @@ function ReviewScreen({
         style={[
           styles.outputBox,
           { marginTop: insets.top + 12 },
-          // Give the box more room when the user wants to read the full
-          // shader source, otherwise stay short to leave the photo visible.
           isOutputExpanded ? { maxHeight: '40%' } : null,
         ]}
       >
-        <Pressable
-          onPress={() => setIsOutputExpanded(v => !v)}
-          style={{
-            height: 34,
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            paddingRight: 14,
-          }}
-        >
-          {isOutputExpanded ? (
-            <CollapseIcon color="#9ba1a6" size={14} />
-          ) : (
-            <ExpandIcon color="#9ba1a6" size={14} />
-          )}
-        </Pressable>
+        {/* ScrollView OUTER, Pressable INNER is the only RN pattern where
+            drag-to-scroll and tap-anywhere both work. ScrollView's pan
+            recognizer wins on movement; Pressable's onPress fires on
+            stationary tap. */}
         <ScrollView
           ref={outputScrollRef}
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, gap: 10 }}
           scrollEnabled={isOutputExpanded}
           showsVerticalScrollIndicator={isOutputExpanded}
+          keyboardShouldPersistTaps="always"
           onContentSizeChange={() => {
-            // Auto-scroll the streaming tail into view ONLY while a
-            // generation is in flight. After it finishes, leave the scroll
-            // position at the top so the user can read "You: ..." first
-            // and scroll down through Gemma's full output themselves.
             if (isOutputExpanded && isGenerating) {
               outputScrollRef.current?.scrollToEnd({ animated: false });
             }
           }}
         >
-          {lm.isDownloading ? (
-            <View style={styles.raceCard}>
-              <Text style={styles.raceTitle}>
-                Downloading Gemma 4 E2B —{' '}
-                {downloadStartMs
-                  ? `${Math.floor((nowMs - downloadStartMs) / 1000)}s elapsed`
-                  : '…'}
-              </Text>
-              <RaceBar
-                label="4.68 GB"
-                progress={lm.downloadProgress ?? 0}
-                timeMs={null}
-                isWinner={false}
-                raceDone={false}
-              />
+          <Pressable onPress={() => setIsOutputExpanded(v => !v)}>
+            <View
+              pointerEvents="none"
+              style={{
+                height: 26,
+                alignItems: 'flex-end',
+                justifyContent: 'center',
+              }}
+            >
+              {isOutputExpanded ? (
+                <CollapseIcon color="#9ba1a6" size={14} />
+              ) : (
+                <ExpandIcon color="#9ba1a6" size={14} />
+              )}
             </View>
-          ) : null}
-          {statusLine && !lm.isDownloading ? (
-            <Text style={styles.statusText} numberOfLines={isOutputExpanded ? 0 : 1}>
-              {statusLine}
-            </Text>
-          ) : null}
-          {transcript ? (
-            <Text
-              style={styles.transcriptText}
-              numberOfLines={isOutputExpanded ? 0 : 1}
-            >
-              <Text style={styles.transcriptLabel}>You: </Text>
-              {transcript}
-            </Text>
-          ) : null}
-          {response ? (
-            <Text
-              style={styles.responseText}
-              numberOfLines={isOutputExpanded ? 0 : 1}
-            >
-              <Text style={styles.responseLabel}>Gemma: </Text>
-              {isOutputExpanded
-                ? response
-                : isGenerating
-                  ? (response.split('\n').filter(l => l.trim()).pop() || response)
-                  : response}
-              {isGenerating ? <Text style={styles.cursor}>▍</Text> : null}
-            </Text>
-          ) : null}
-          {error ? (
-            <Text style={styles.errorText} numberOfLines={isOutputExpanded ? 0 : 1}>
-              {error}
-            </Text>
-          ) : null}
+            {lm.isDownloading ? (
+              <View style={styles.raceCard}>
+                <Text style={styles.raceTitle}>
+                  Downloading Gemma 4 E2B —{' '}
+                  {downloadStartMs
+                    ? `${Math.floor((nowMs - downloadStartMs) / 1000)}s elapsed`
+                    : '…'}
+                </Text>
+                <RaceBar
+                  label="4.68 GB"
+                  progress={lm.downloadProgress ?? 0}
+                  timeMs={null}
+                  isWinner={false}
+                  raceDone={false}
+                />
+              </View>
+            ) : null}
+            {statusLine && !lm.isDownloading ? (
+              <Text style={styles.statusText} numberOfLines={isOutputExpanded ? undefined : 1}>
+                {statusLine}
+              </Text>
+            ) : null}
+            {transcript ? (
+              <Text
+                style={styles.transcriptText}
+                numberOfLines={isOutputExpanded ? undefined : 1}
+              >
+                <Text style={styles.transcriptLabel}>You: </Text>
+                {transcript}
+              </Text>
+            ) : null}
+            {response ? (
+              <Text
+                style={styles.responseText}
+                numberOfLines={isOutputExpanded ? undefined : 1}
+              >
+                <Text style={styles.responseLabel}>Gemma: </Text>
+                {isOutputExpanded
+                  ? response
+                  : isGenerating
+                    ? (response.split('\n').filter(l => l.trim()).pop() || response)
+                    : response}
+                {isGenerating ? <Text style={styles.cursor}>▍</Text> : null}
+              </Text>
+            ) : null}
+            {error ? (
+              <Text style={styles.errorText} numberOfLines={isOutputExpanded ? undefined : 1}>
+                {error}
+              </Text>
+            ) : null}
+          </Pressable>
         </ScrollView>
       </View>
 
