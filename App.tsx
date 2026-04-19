@@ -1492,13 +1492,6 @@ function ReviewScreen({
       ].join('\n');
       setInferenceDebug(header);
       try {
-        // Text-only inference: the photo is the WebGL texture at render
-        // time, not signal for shader code-gen. Passing it here would load
-        // the multimodal vision encoder (+hundreds of MB phys_footprint)
-        // and push the process past iOS's jetsam threshold for the int4
-        // weights we're already loading. Eval batches that ran all day
-        // were text-only and worked; the review screen used to pass the
-        // photo and got jetsam-killed mid-init.
         const messages: CactusLMMessage[] = [
           { role: 'system', content: SHADER_SYSTEM_PROMPT },
           { role: 'user', content: prompt },
