@@ -13,7 +13,6 @@
   "dependencies": {
     "@dr.pogodin/react-native-fs": "^2.38.2",
     "@react-native/new-app-screen": "0.85.1",
-    "@sayem314/react-native-keep-awake": "^1.4.0",
     "cactus-react-native": "^1.13.0",
     "react": "19.2.3",
     "react-native": "0.85.1",

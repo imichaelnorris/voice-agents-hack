@@ -1,8 +1,8 @@
 diff --git a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-index dd342cc..f9bdced 100644
+index dd342cc..6f1aa8f 100644
 --- a/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
 +++ b/node_modules/cactus-react-native/ios/HybridCactusFileSystem.swift
-@@ -92,6 +92,13 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
+@@ -92,8 +92,26 @@ class HybridCactusFileSystem: HybridCactusFileSystemSpec {
          }
        }
  
@@ -14,8 +14,48 @@ index dd342cc..f9bdced 100644
 +      // we'll get NSURLErrorTimedOut (-1001) and the JS-side retry loop
 +      // picks up from zero.
        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
-       let task = session.downloadTask(with: url)
+-      let task = session.downloadTask(with: url)
++
++      // Opt the request into HTTP/3. Safari gets ~300 Mbps on this URL
++      // while NSURLSession.default has been doing 2–3 Mbps — the most
++      // likely culprit is protocol negotiation: Safari negotiates h3,
++      // NSURLSession falls back to a degraded h2/h1.1 path. assumesHTTP3Capable
++      // tells URLSession to try QUIC even without an Alt-Svc advertisement.
++      // See the metrics log below to confirm what actually got negotiated.
++      var request = URLRequest(url: url)
++      if #available(iOS 15.0, *) {
++        request.assumesHTTP3Capable = true
++      }
++      let task = session.downloadTask(with: request)
  
+       callback?(0.0)
+ 
+@@ -236,6 +254,25 @@ private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate, UR
+     }
+   }
+   
++  // Log negotiated protocol + timing per transaction. Lets us confirm
++  // whether URLSession picked HTTP/3 (h3), h2, or http/1.1 — the most
++  // likely reason app downloads are slower than Safari on the same URL.
++  func urlSession(
++    _ session: URLSession,
++    task: URLSessionTask,
++    didFinishCollecting metrics: URLSessionTaskMetrics
++  ) {
++    for t in metrics.transactionMetrics {
++      let proto = t.networkProtocolName ?? "?"
++      let reused = t.isReusedConnection
++      let remote = t.remoteAddress ?? "?"
++      let status = (t.response as? HTTPURLResponse)?.statusCode ?? -1
++      print(
++        "[cactus.dl.metrics] proto=\(proto) status=\(status) reused=\(reused) remote=\(remote)"
++      )
++    }
++  }
++
+   func urlSession(
+     _ session: URLSession,
+     task: URLSessionTask,
 diff --git a/node_modules/cactus-react-native/lib/module/index.js b/node_modules/cactus-react-native/lib/module/index.js
 index 9e72096..1c15d98 100644
 --- a/node_modules/cactus-react-native/lib/module/index.js

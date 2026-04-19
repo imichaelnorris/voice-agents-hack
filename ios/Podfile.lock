@@ -98,7 +98,6 @@ PODS:
     - React-RCTText (= 0.85.1)
     - React-RCTVibration (= 0.85.1)
   - React-callinvoker (0.85.1)
-  - React-Codegen (0.1.0)
   - React-Core (0.85.1):
     - hermes-engine
     - RCTDeprecation
@@ -1435,13 +1434,6 @@ PODS:
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-  - react-native-keep-awake (1.4.0):
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Codegen
-    - React-Core
-    - React-RCTFabric
-    - ReactCommon/turbomodule/core
   - react-native-safe-area-context (5.7.0):
     - hermes-engine
     - RCTRequired
@@ -2058,7 +2050,6 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
-  - "react-native-keep-awake (from `../node_modules/@sayem314/react-native-keep-awake`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - react-native-webview (from `../node_modules/react-native-webview`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
@@ -2103,7 +2094,6 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
-    - React-Codegen
     - ZIPFoundation
 
 EXTERNAL SOURCES:
@@ -2190,8 +2180,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
-  react-native-keep-awake:
-    :path: "../node_modules/@sayem314/react-native-keep-awake"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   react-native-webview:
@@ -2288,7 +2276,6 @@ SPEC CHECKSUMS:
   RCTTypeSafety: a5b1d1d5a4612ad3533a4a1302e158e0253b3dac
   React: 6dbd7825a18782848e8c62f1feb16b344cb17ac6
   React-callinvoker: 90c70d14c7ca646fdae3e25e8d9fbb0fbb20459c
-  React-Codegen: 4b8b4817cea7a54b83851d4c1f91f79aa73de30a
   React-Core: 9dce76263f670de254e896f317676e7e95369ac2
   React-Core-prebuilt: e5f5c9bc7dd7ce3aa2ec3e3c668956cb1264aa78
   React-CoreModules: b9fadb43261b88cb0d3a2d59808603567e995095
@@ -2318,7 +2305,6 @@ SPEC CHECKSUMS:
   React-logger: 4e7583fb51ef2aa76b298c88e1b9a5cff83e03f7
   React-Mapbuffer: 820bc13d35de93c05aacefb3ab43f061b247c64e
   React-microtasksnativemodule: d8115c4d1035b8671c036a47d82fe75d1ca44e44
-  react-native-keep-awake: 129cb4bd75d0f304a479b4c4527d2994fe18e43c
   react-native-safe-area-context: 6b4966397ada0f7dd481e4486a2ef936834861a1
   react-native-webview: 2da09bdea1aeb6c46e27dd94632e21059cade6c1
   React-NativeModulesApple: 647d3ab78e02b3a40fedffd856744215219ff0a6

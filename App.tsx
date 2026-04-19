@@ -34,10 +34,6 @@ import {
   useCactusSTT,
   type CactusLMMessage,
 } from 'cactus-react-native';
-import {
-  activateKeepAwake,
-  deactivateKeepAwake,
-} from '@sayem314/react-native-keep-awake';
 import { ShaderWebView, extractShader } from './ShaderWebView';
 import { CANNED_SHADERS } from './cannedShaders';
 
@@ -1036,15 +1032,10 @@ function PromptEvalScreen({ onBack, lm }: { onBack: () => void; lm: LmHook }) {
     return () => clearInterval(id);
   }, []);
 
-  // Keep the screen awake while client mode is connected — iOS otherwise
-  // suspends the app on auto-lock and kills the WebSocket mid-batch.
-  useEffect(() => {
-    if (wsStatus === 'connected') {
-      activateKeepAwake();
-      return () => deactivateKeepAwake();
-    }
-    return undefined;
-  }, [wsStatus]);
+  // Keep-awake: NOT wired right now — @sayem314/react-native-keep-awake
+  // pinned CLANG_CXX_LANGUAGE_STANDARD to c++17 and broke RN 0.85's
+  // ReactCommon (`requires` clause is C++20). Workaround: iOS Settings →
+  // Display & Brightness → Auto-Lock → Never while running batches.
 
   const toggleLogExpanded = useCallback((id: string) => {
     setExpandedLogIds(prev => {
