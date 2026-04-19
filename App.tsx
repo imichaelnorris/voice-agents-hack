@@ -31,8 +31,21 @@ import {
 import {
   useCactusLM,
   useCactusSTT,
+  setModelUrlOverride,
   type CactusLMMessage,
 } from 'cactus-react-native';
+
+// In __DEV__ we route the 4.68 GB apple zip through a Cloudflare quick
+// tunnel pointed at a local python http server on the Mac — both HF and
+// R2 were too slow from the hackathon WiFi. The tunnel URL changes every
+// time cloudflared restarts, so update this when your tunnel flips.
+// Release builds fall through to the registry's upstream HF URL.
+const DEV_GEMMA_APPLE_URL =
+  'https://donate-prefer-graphs-trades.trycloudflare.com/gemma-4-e2b-it-int4-apple.zip';
+
+if (__DEV__) {
+  setModelUrlOverride('gemma-4-e2b-it', { proApple: DEV_GEMMA_APPLE_URL });
+}
 import { ShaderWebView, extractShader } from './ShaderWebView';
 import { CANNED_SHADERS } from './cannedShaders';
 
@@ -341,21 +354,20 @@ function Root() {
   const lm = useCactusLM({ model: VISION_MODEL, options: VISION_MODEL_OPTIONS });
   const stt = useCactusSTT({ model: STT_MODEL, options: STT_MODEL_OPTIONS });
 
-  const lmAttempted = useRef(false);
-  const sttAttempted = useRef(false);
-
+  // Kick off the download whenever we land in "not downloaded, not downloading".
+  // Retries on failure (e.g. tunnel drop, transient 5xx) after a 1.5 s cool-off
+  // so we don't spin. The previous one-shot ref would leave the UI stuck on
+  // "Preparing Gemma 4 E2B…" whenever the first attempt errored mid-transfer.
   useEffect(() => {
-    if (!lm.isDownloaded && !lm.isDownloading && !lmAttempted.current) {
-      lmAttempted.current = true;
-      lm.download().catch(() => {});
-    }
+    if (lm.isDownloaded || lm.isDownloading) return;
+    const id = setTimeout(() => { lm.download().catch(() => {}); }, 1500);
+    return () => clearTimeout(id);
   }, [lm.isDownloaded, lm.isDownloading, lm.download]);
 
   useEffect(() => {
-    if (!stt.isDownloaded && !stt.isDownloading && !sttAttempted.current) {
-      sttAttempted.current = true;
-      stt.download().catch(() => {});
-    }
+    if (stt.isDownloaded || stt.isDownloading) return;
+    const id = setTimeout(() => { stt.download().catch(() => {}); }, 1500);
+    return () => clearTimeout(id);
   }, [stt.isDownloaded, stt.isDownloading, stt.download]);
 
   const handlePhotoTaken = useCallback((uri: string) => {
