@@ -2,7 +2,11 @@
 // Push a batch of prompts to the eval server and wait for results.
 //
 // Usage:
-//   node eval_server/run_batch.mjs <batch.json> [--out results.jsonl] [--server http://localhost:9000]
+//   node eval_server/run_batch.mjs <batch.json> [--out results.jsonl] [--server http://localhost:9000] [--gap 0]
+//
+// --gap N enqueues prompts one at a time with N seconds of waiting after each
+// completion. Useful when the phone is thermally throttling — pacing inferences
+// gives the SoC time to dissipate heat between runs.
 //
 // Batch JSON shape:
 //   {
@@ -33,6 +37,10 @@ const outPath = (() => {
 const server = (() => {
   const i = args.indexOf('--server');
   return i !== -1 ? args[i + 1] : 'http://localhost:9000';
+})();
+const gapSec = (() => {
+  const i = args.indexOf('--gap');
+  return i !== -1 ? Number(args[i + 1]) || 0 : 0;
 })();
 
 const batch = JSON.parse(fs.readFileSync(batchPath, 'utf8'));
@@ -65,56 +73,92 @@ if (!status.connected) {
   process.exit(1);
 }
 
-const enqRes = await fetch(`${server}/enqueue`, {
-  method: 'POST',
-  headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({
-    systemPrompt: batch.systemPrompt,
-    options: batch.options,
-    prompts,
-  }),
-});
-if (!enqRes.ok) {
-  console.error(`[server] enqueue failed: ${enqRes.status} ${await enqRes.text()}`);
-  process.exit(1);
-}
-console.log('[server]', await enqRes.json());
-
-// Stream results as they arrive. The server keeps everything in memory and
-// re-serves the full set on each /results call; we just dedupe via the seen set.
-const seen = new Set();
 const out = fs.createWriteStream(outPath, { flags: 'w' });
 console.log(`[batch] writing results to ${outPath}`);
-
-const expected = prompts.length;
+const seen = new Set();
 const startedAt = Date.now();
-while (seen.size < expected) {
-  await new Promise(r => setTimeout(r, 1500));
+
+async function recordIfNew(rec) {
+  if (!rec || seen.has(rec.id)) return false;
+  seen.add(rec.id);
+  const m = meta.get(rec.id) ?? {};
+  const merged = {
+    id: rec.id,
+    label: m.label,
+    prompt: m.prompt,
+    systemPrompt: m.systemPrompt ?? batch.systemPrompt,
+    response: rec.response,
+    error: rec.error,
+    durationMs: rec.durationMs,
+    receivedAt: rec.receivedAt,
+  };
+  out.write(JSON.stringify(merged) + '\n');
+  const tag = rec.error ? 'err' : 'ok ';
+  const preview = (rec.response ?? rec.error ?? '').slice(0, 80).replace(/\n/g, '↵');
+  console.log(`[${tag}] ${rec.id} (${rec.durationMs}ms) ${preview}`);
+  return true;
+}
+
+async function pollOnce() {
   const res = await fetch(`${server}/results`);
-  if (res.status === 204) continue;
+  if (res.status === 204) return;
   const text = await res.text();
   for (const line of text.split('\n').filter(Boolean)) {
     let rec;
     try { rec = JSON.parse(line); } catch { continue; }
-    if (seen.has(rec.id)) continue;
-    seen.add(rec.id);
-    const m = meta.get(rec.id) ?? {};
-    const merged = {
-      id: rec.id,
-      label: m.label,
-      prompt: m.prompt,
-      systemPrompt: m.systemPrompt ?? batch.systemPrompt,
-      response: rec.response,
-      error: rec.error,
-      durationMs: rec.durationMs,
-      receivedAt: rec.receivedAt,
-    };
-    out.write(JSON.stringify(merged) + '\n');
-    const tag = rec.error ? 'err' : 'ok ';
-    const preview = (rec.response ?? rec.error ?? '').slice(0, 80).replace(/\n/g, '↵');
-    console.log(`[${tag}] ${rec.id} (${rec.durationMs}ms) ${preview}`);
+    await recordIfNew(rec);
   }
 }
+
+if (gapSec > 0) {
+  // Paced mode: enqueue one prompt, wait for its result, sleep `gap` seconds,
+  // then enqueue the next. Lets the phone's SoC cool between inferences.
+  console.log(`[batch] paced mode: ${gapSec}s gap between prompts`);
+  for (const p of prompts) {
+    const enqRes = await fetch(`${server}/enqueue`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        systemPrompt: batch.systemPrompt,
+        options: batch.options,
+        prompts: [p],
+      }),
+    });
+    if (!enqRes.ok) {
+      console.error(`[server] enqueue failed for ${p.id}: ${enqRes.status}`);
+      continue;
+    }
+    while (!seen.has(p.id)) {
+      await new Promise(r => setTimeout(r, 1500));
+      await pollOnce();
+    }
+    if (gapSec > 0) {
+      console.log(`[batch] sleeping ${gapSec}s for thermal cooldown...`);
+      await new Promise(r => setTimeout(r, gapSec * 1000));
+    }
+  }
+} else {
+  // Burst mode: dump everything into the queue, poll until all back.
+  const enqRes = await fetch(`${server}/enqueue`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      systemPrompt: batch.systemPrompt,
+      options: batch.options,
+      prompts,
+    }),
+  });
+  if (!enqRes.ok) {
+    console.error(`[server] enqueue failed: ${enqRes.status} ${await enqRes.text()}`);
+    process.exit(1);
+  }
+  console.log('[server]', await enqRes.json());
+  while (seen.size < prompts.length) {
+    await new Promise(r => setTimeout(r, 1500));
+    await pollOnce();
+  }
+}
+
 out.end();
 const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
-console.log(`[batch] done — ${seen.size}/${expected} results in ${elapsed}s`);
+console.log(`[batch] done — ${seen.size}/${prompts.length} results in ${elapsed}s`);

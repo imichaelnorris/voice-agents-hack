@@ -1,0 +1,16 @@
+{
+  "_comment": "Last 9 of baseline-50 — 4 thermal + 5 glitch — that the previous runs didn't get to before the phone suspended.",
+  "systemPrompt": "You generate GLSL ES 1.00 fragment shaders for WebGL 1. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the varying at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  varying vec2 v_uv;             // texture coords, 0..1\n\nWrite the final color to gl_FragColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white.",
+  "options": { "temperature": 0.7, "maxTokens": 1024 },
+  "prompts": [
+    { "id": "thermal-r2", "label": "thermal", "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow" },
+    { "id": "thermal-r3", "label": "thermal", "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow" },
+    { "id": "thermal-r4", "label": "thermal", "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow" },
+    { "id": "thermal-r5", "label": "thermal", "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow" },
+    { "id": "glitch-r1",  "label": "glitch",  "prompt": "add a chromatic-aberration glitch effect: sample red and blue channels with a slight horizontal offset" },
+    { "id": "glitch-r2",  "label": "glitch",  "prompt": "add a chromatic-aberration glitch effect: sample red and blue channels with a slight horizontal offset" },
+    { "id": "glitch-r3",  "label": "glitch",  "prompt": "add a chromatic-aberration glitch effect: sample red and blue channels with a slight horizontal offset" },
+    { "id": "glitch-r4",  "label": "glitch",  "prompt": "add a chromatic-aberration glitch effect: sample red and blue channels with a slight horizontal offset" },
+    { "id": "glitch-r5",  "label": "glitch",  "prompt": "add a chromatic-aberration glitch effect: sample red and blue channels with a slight horizontal offset" }
+  ]
+}
