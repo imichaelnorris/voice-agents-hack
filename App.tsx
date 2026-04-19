@@ -1153,9 +1153,14 @@ function PromptEvalScreen({ onBack, lm }: { onBack: () => void; lm: LmHook }) {
         const data = typeof evt.data === 'string' ? evt.data : '';
         const msg = JSON.parse(data);
         if (msg && msg.type === 'inference' && typeof msg.id === 'string' && typeof msg.prompt === 'string') {
-          chainRef.current = chainRef.current.then(() =>
-            handleInferenceRequest(msg as EvalInferenceMsg),
-          );
+          chainRef.current = chainRef.current.then(async () => {
+            // Yield so React can flush the previous request's
+            // setIsGenerating(false) before we kick off the next one.
+            // Otherwise the hook-wrapped lm.complete() reads a stale
+            // closure and rejects with "already generating".
+            await new Promise(r => setTimeout(r, 80));
+            return handleInferenceRequest(msg as EvalInferenceMsg);
+          });
         }
       } catch (err) {
         setError(`Parse error: ${err instanceof Error ? err.message : String(err)}`);
