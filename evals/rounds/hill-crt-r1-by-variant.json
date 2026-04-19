@@ -1,0 +1,52 @@
+{
+  "source": "evals/raw/hill-crt-r1.jsonl",
+  "rows": 50,
+  "overall": {
+    "pass": 39,
+    "total": 50,
+    "pct": 0.78
+  },
+  "by_variant": {
+    "v0_baseline": {
+      "pass": 7,
+      "total": 10,
+      "pct": 0.7,
+      "fail_modes": {
+        "'scanline_factor' : undeclared identifier": 1,
+        "'=' :  cannot convert from ' global mediump float' to ' temp mediump 2-component": 1,
+        "'=' :  cannot convert from ' temp lowp 3-component vector of float' to ' temp me": 1
+      }
+    },
+    "v1_rule": {
+      "pass": 7,
+      "total": 10,
+      "pct": 0.7,
+      "fail_modes": {
+        "'=' :  cannot convert from ' global mediump float' to ' temp mediump 2-component": 2,
+        "samples_u_texture": 1
+      }
+    },
+    "v2_snippet": {
+      "pass": 10,
+      "total": 10,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "v3_reference": {
+      "pass": 10,
+      "total": 10,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "v4_constraint": {
+      "pass": 5,
+      "total": 10,
+      "pct": 0.5,
+      "fail_modes": {
+        "'' :  syntax error, unexpected RIGHT_BRACE": 3,
+        "'=' :  cannot convert from ' global mediump float' to ' temp mediump 2-component": 1,
+        "'=' :  cannot convert from ' temp mediump float' to ' temp mediump 2-component v": 1
+      }
+    }
+  }
+}

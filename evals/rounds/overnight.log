@@ -1,0 +1,155 @@
+[overnight] starting, 17 hills queued
+[overnight] running hill-underwater-r1
+[overnight] hill-underwater-r1 done in 1985s
+[overnight] running hill-neon-r1
+[overnight] hill-neon-r1 done in 731s
+[overnight] running hill-underwater-r2
+[overnight] hill-underwater-r2 done in 1403s
+[overnight] running hill-neon-r2
+[overnight] hill-neon-r2 done in 908s
+[overnight] running hill-glitch-r1
+[overnight] hill-glitch-r1 done in 789s
+[overnight] running hill-crt-r1
+[overnight] hill-crt-r1 done in 791s
+[overnight] running hill-invert-r1
+[overnight] hill-invert-r1 done in 411s
+[overnight] running hill-underwater-r3
+[overnight] hill-underwater-r3 done in 950s
+[overnight] running hill-neon-r3
+[overnight] hill-neon-r3 done in 696s
+[overnight] running hill-glitch-r2
+[overnight] hill-glitch-r2 done in 677s
+[overnight] running hill-crt-r2
+[overnight] hill-crt-r2 done in 786s
+[overnight] running hill-invert-r2
+[overnight] hill-invert-r2 done in 421s
+[overnight] running hill-vignette-r1
+[overnight] hill-vignette-r1 done in 543s
+[overnight] running hill-sepia-r1
+[overnight] hill-sepia-r1 done in 782s
+[overnight] running hill-posterize-r1
+[overnight] hill-posterize-r1 done in 569s
+[overnight] running hill-pixelate-r1
+[overnight] hill-pixelate-r1 done in 505s
+[overnight] running hill-thermal-r1
+[overnight] hill-thermal-r1 done in 1324s
+[overnight] queue exhausted
+[webgl2] overnight done, starting WebGL2 baseline
+[WARN] [npu] [gemma4-vision] vision_encoder.mlpackage not found; using CPU vision encoder
+[WARN] [npu] [gemma4-audio] audio_encoder.mlpackage not found; using CPU audio encoder
+[WARN] [npu] [gemma4] model.mlpackage not found; using CPU prefill
+[cactus] 50 prompts → /Users/michael/github/cactus/weights/gemma-4-e2b-it
+[cactus] writing to evals/raw/round-0-webgl2.jsonl
+[cactus] loading model (this can take a moment)...
+[cactus] model loaded in 1.0s
+[ok ] invert-r1 (7.2s) precision mediump float;
+[ok ] invert-r2 (7.7s) precision mediump float;
+[ok ] invert-r3 (9.7s) precision mediump float;
+[ok ] invert-r4 (9.5s) precision mediump float;
+[ok ] invert-r5 (9.5s) precision mediump float;
+[ok ] crt-r1 (12.0s) precision mediump float;
+[ok ] crt-r2 (23.4s) precision mediump float;
+[ok ] crt-r3 (31.1s) precision mediump float;
+[ok ] crt-r4 (14.3s) precision mediump float;
+[ok ] crt-r5 (21.0s) #version 300 es
+[ok ] underwater-r1 (17.4s) precision mediump float;
+[ok ] underwater-r2 (17.7s) precision mediump float;
+[ok ] underwater-r3 (19.0s) precision mediump float;
+[ok ] underwater-r4 (25.9s) precision mediump float;
+[ok ] underwater-r5 (17.3s) precision mediump float;
+[ok ] vignette-r1 (8.1s) precision mediump float;
+[ok ] vignette-r2 (13.1s) precision mediump float;
+[ok ] vignette-r3 (10.2s) precision mediump float;
+[ok ] vignette-r4 (8.3s) precision mediump float;
+[ok ] vignette-r5 (9.8s) precision mediump float;
+[ok ] neon-r1 (14.0s) precision mediump float;
+[ok ] neon-r2 (25.9s) precision mediump float;
+[ok ] neon-r3 (14.2s) precision mediump float;
+[ok ] neon-r4 (14.9s) precision mediump float;
+[ok ] neon-r5 (458.0s) precision mediump float;
+[ok ] sepia-r1 (23.0s) precision mediump float;
+[ok ] sepia-r2 (13.4s) precision mediump float;
+[ok ] sepia-r3 (13.4s) precision mediump float;
+[ok ] sepia-r4 (13.4s) precision mediump float;
+[ok ] sepia-r5 (15.0s) precision mediump float;
+[ok ] posterize-r1 (14.3s) precision mediump float;
+[ok ] posterize-r2 (13.8s) precision mediump float;
+[ok ] posterize-r3 (14.1s) precision mediump float;
+[ok ] posterize-r4 (13.2s) precision mediump float;
+[ok ] posterize-r5 (14.0s) precision mediump float;
+[ok ] pixelate-r1 (7.1s) precision mediump float;
+[ok ] pixelate-r2 (7.2s) precision mediump float;
+[ok ] pixelate-r3 (7.1s) precision mediump float;
+[ok ] pixelate-r4 (1063.4s) precision mediump float;
+[ok ] pixelate-r5 (7.5s) precision mediump float;
+[ok ] thermal-r1 (20.0s) precision mediump float;
+[ok ] thermal-r2 (19.8s) precision mediump float;
+[ok ] thermal-r3 (20.1s) precision mediump float;
+[ok ] thermal-r4 (823.7s) precision mediump float;
+[ok ] thermal-r5 (17.8s) precision mediump float;
+[ok ] glitch-r1 (10.9s) precision mediump float;
+[ok ] glitch-r2 (9.4s) precision mediump float;
+[ok ] glitch-r3 (12.4s) precision mediump float;
+[ok ] glitch-r4 (14.6s) precision mediump float;
+[ok ] glitch-r5 (9.6s) precision mediump float;
+[cactus] done — 50 ok, 0 err in 3017.9s → evals/raw/round-0-webgl2.jsonl
+[webgl2] inference done, scoring
+[webgl2] complete
+[WARN] [npu] [gemma4-vision] vision_encoder.mlpackage not found; using CPU vision encoder
+[WARN] [npu] [gemma4-audio] audio_encoder.mlpackage not found; using CPU audio encoder
+[WARN] [npu] [gemma4] model.mlpackage not found; using CPU prefill
+[cactus] 50 prompts → /Users/michael/github/cactus/weights/gemma-4-e2b-it
+[cactus] writing to evals/raw/round-3.jsonl
+[cactus] loading model (this can take a moment)...
+[cactus] model loaded in 3.3s
+[ok ] invert-r1 (8.9s) precision mediump float;
+[ok ] invert-r2 (8.9s) precision mediump float;
+[ok ] invert-r3 (8.8s) precision mediump float;
+[ok ] invert-r4 (8.8s) precision mediump float;
+[ok ] invert-r5 (8.8s) precision mediump float;
+[ok ] crt-r1 (14.5s) precision mediump float;
+[ok ] crt-r2 (14.9s) precision mediump float;
+[ok ] crt-r3 (16.1s) precision mediump float;
+[ok ] crt-r4 (16.0s) precision mediump float;
+[ok ] crt-r5 (16.1s) precision mediump float;
+[ok ] underwater-r1 (17.1s) precision mediump float;
+[ok ] underwater-r2 (16.9s) precision mediump float;
+[ok ] underwater-r3 (17.3s) precision mediump float;
+[ok ] underwater-r4 (17.0s) precision mediump float;
+[ok ] underwater-r5 (17.0s) precision mediump float;
+[ok ] vignette-r1 (11.3s) precision mediump float;
+[ok ] vignette-r2 (12.4s) precision mediump float;
+[ok ] vignette-r3 (11.7s) precision mediump float;
+[ok ] vignette-r4 (11.7s) precision mediump float;
+[ok ] vignette-r5 (11.8s) precision mediump float;
+[ok ] neon-r1 (12.1s) precision mediump float;
+[ok ] neon-r2 (12.1s) precision mediump float;
+[ok ] neon-r3 (23.3s) precision mediump float;
+[ok ] neon-r4 (21.1s) precision mediump float;
+[ok ] neon-r5 (12.3s) precision mediump float;
+[ok ] sepia-r1 (11.1s) precision mediump float;
+[ok ] sepia-r2 (12.9s) precision mediump float;
+[ok ] sepia-r3 (14.4s) precision mediump float;
+[ok ] sepia-r4 (13.1s) precision mediump float;
+[ok ] sepia-r5 (28.7s) precision mediump float;
+[ok ] posterize-r1 (13.8s) precision mediump float;
+[ok ] posterize-r2 (19.9s) precision mediump float;
+[ok ] posterize-r3 (12.7s) precision mediump float;
+[ok ] posterize-r4 (18.6s) precision mediump float;
+[ok ] posterize-r5 (15.9s) precision mediump float;
+[ok ] pixelate-r1 (9.9s) precision mediump float;
+[ok ] pixelate-r2 (10.2s) precision mediump float;
+[ok ] pixelate-r3 (10.3s) precision mediump float;
+[ok ] pixelate-r4 (10.3s) precision mediump float;
+[ok ] pixelate-r5 (10.2s) precision mediump float;
+[ok ] thermal-r1 (25.9s) precision mediump float;
+[ok ] thermal-r2 (26.0s) precision mediump float;
+[ok ] thermal-r3 (29.5s) precision mediump float;
+[ok ] thermal-r4 (25.9s) precision mediump float;
+[ok ] thermal-r5 (25.9s) precision mediump float;
+[ok ] glitch-r1 (13.1s) precision mediump float;
+[ok ] glitch-r2 (12.9s) precision mediump float;
+[ok ] glitch-r3 (13.7s) precision mediump float;
+[ok ] glitch-r4 (12.1s) precision mediump float;
+[ok ] glitch-r5 (12.1s) precision mediump float;
+[cactus] done — 50 ok, 0 err in 755.9s → evals/raw/round-3.jsonl

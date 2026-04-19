@@ -1,0 +1,70 @@
+{
+  "overall": {
+    "pass": 50,
+    "total": 50,
+    "pct": 1
+  },
+  "by_concept": {
+    "invert": {
+      "pass": 5,
+      "total": 5,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "crt": {
+      "pass": 5,
+      "total": 5,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "underwater": {
+      "pass": 5,
+      "total": 5,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "vignette": {
+      "pass": 5,
+      "total": 5,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "neon": {
+      "pass": 5,
+      "total": 5,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "sepia": {
+      "pass": 5,
+      "total": 5,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "posterize": {
+      "pass": 5,
+      "total": 5,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "pixelate": {
+      "pass": 5,
+      "total": 5,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "thermal": {
+      "pass": 5,
+      "total": 5,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "glitch": {
+      "pass": 5,
+      "total": 5,
+      "pct": 1,
+      "fail_modes": {}
+    }
+  },
+  "rows_count": 50
+}

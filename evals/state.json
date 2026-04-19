@@ -1,0 +1,12 @@
+{
+  "started_at": null,
+  "model": "cactus-int4 gemma-4-e2b-it (Mac CPU)",
+  "eval_set": "eval_server/batches/baseline-50.json",
+  "n_runs_per_prompt": 5,
+  "current_prompt_id": "p0",
+  "current_prompt_path": "evals/prompts/p0.txt",
+  "rounds_completed": 0,
+  "ceiling_bound_concepts": [],
+  "history": [],
+  "notes": "Baseline eval set is 10 concepts × 5 runs = 50 inferences. PSTACK calls for n>=10 — using 5 here matches the existing fixed batch and the heuristics doc validation pattern. Per-concept hill climbs do 10 runs/variant separately."
+}

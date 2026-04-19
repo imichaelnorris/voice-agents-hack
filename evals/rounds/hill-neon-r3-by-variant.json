@@ -1,0 +1,52 @@
+{
+  "source": "evals/raw/hill-neon-r3.jsonl",
+  "rows": 50,
+  "overall": {
+    "pass": 34,
+    "total": 50,
+    "pct": 0.68
+  },
+  "by_variant": {
+    "v0_baseline": {
+      "pass": 3,
+      "total": 10,
+      "pct": 0.3,
+      "fail_modes": {
+        "samples_u_texture": 1,
+        "'=' :  cannot convert from ' temp mediump float' to ' temp mediump 2-component v": 4,
+        "'pow' : no matching overloaded function found": 1,
+        "writes_gl_FragColor,samples_u_texture": 1
+      }
+    },
+    "v1_rule": {
+      "pass": 9,
+      "total": 10,
+      "pct": 0.9,
+      "fail_modes": {
+        "'=' :  cannot convert from ' temp mediump float' to ' temp mediump 3-component v": 1
+      }
+    },
+    "v2_snippet": {
+      "pass": 10,
+      "total": 10,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "v3_reference": {
+      "pass": 10,
+      "total": 10,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "v4_constraint": {
+      "pass": 2,
+      "total": 10,
+      "pct": 0.2,
+      "fail_modes": {
+        "'constructor' : too many arguments": 4,
+        "'' :  syntax error, unexpected RIGHT_BRACE": 3,
+        "samples_u_texture": 1
+      }
+    }
+  }
+}

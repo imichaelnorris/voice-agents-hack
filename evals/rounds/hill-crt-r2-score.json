@@ -1,0 +1,21 @@
+{
+  "overall": {
+    "pass": 40,
+    "total": 50,
+    "pct": 0.8
+  },
+  "by_concept": {
+    "crt": {
+      "pass": 40,
+      "total": 50,
+      "pct": 0.8,
+      "fail_modes": {
+        "'=' :  cannot convert from ' temp lowp 3-component vector of float' to ' temp me": 1,
+        "'=' :  cannot convert from ' global mediump float' to ' temp mediump 2-component": 5,
+        "'constructor' : too many arguments": 1,
+        "'' :  syntax error, unexpected RIGHT_BRACE": 3
+      }
+    }
+  },
+  "rows_count": 50
+}

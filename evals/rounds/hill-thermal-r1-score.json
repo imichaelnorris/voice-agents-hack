@@ -1,0 +1,19 @@
+{
+  "overall": {
+    "pass": 44,
+    "total": 50,
+    "pct": 0.88
+  },
+  "by_concept": {
+    "thermal": {
+      "pass": 44,
+      "total": 50,
+      "pct": 0.88,
+      "fail_modes": {
+        "has_main": 3,
+        "'' :  syntax error, unexpected RIGHT_BRACE": 3
+      }
+    }
+  },
+  "rows_count": 50
+}

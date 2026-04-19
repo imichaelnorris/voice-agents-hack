@@ -1,0 +1,19 @@
+[
+  { "spec": "evals/prompts/hill-underwater.json", "out_prefix": "hill-underwater-r1" },
+  { "spec": "evals/prompts/hill-neon.json",       "out_prefix": "hill-neon-r1" },
+  { "spec": "evals/prompts/hill-underwater.json", "out_prefix": "hill-underwater-r2" },
+  { "spec": "evals/prompts/hill-neon.json",       "out_prefix": "hill-neon-r2" },
+  { "spec": "evals/prompts/hill-glitch.json",     "out_prefix": "hill-glitch-r1" },
+  { "spec": "evals/prompts/hill-crt.json",        "out_prefix": "hill-crt-r1" },
+  { "spec": "evals/prompts/hill-invert.json",     "out_prefix": "hill-invert-r1" },
+  { "spec": "evals/prompts/hill-underwater.json", "out_prefix": "hill-underwater-r3" },
+  { "spec": "evals/prompts/hill-neon.json",       "out_prefix": "hill-neon-r3" },
+  { "spec": "evals/prompts/hill-glitch.json",     "out_prefix": "hill-glitch-r2" },
+  { "spec": "evals/prompts/hill-crt.json",        "out_prefix": "hill-crt-r2" },
+  { "spec": "evals/prompts/hill-invert.json",     "out_prefix": "hill-invert-r2" },
+  { "spec": "evals/prompts/hill-vignette.json",   "out_prefix": "hill-vignette-r1" },
+  { "spec": "evals/prompts/hill-sepia.json",      "out_prefix": "hill-sepia-r1" },
+  { "spec": "evals/prompts/hill-posterize.json",  "out_prefix": "hill-posterize-r1" },
+  { "spec": "evals/prompts/hill-pixelate.json",   "out_prefix": "hill-pixelate-r1" },
+  { "spec": "evals/prompts/hill-thermal.json",    "out_prefix": "hill-thermal-r1" }
+]

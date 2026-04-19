@@ -1,0 +1,53 @@
+{
+  "source": "evals/raw/hill-underwater-r2.jsonl",
+  "rows": 50,
+  "overall": {
+    "pass": 36,
+    "total": 50,
+    "pct": 0.72
+  },
+  "by_variant": {
+    "v0_baseline": {
+      "pass": 4,
+      "total": 10,
+      "pct": 0.4,
+      "fail_modes": {
+        "writes_gl_FragColor,samples_u_texture": 1,
+        "'=' :  cannot convert from ' temp mediump float' to ' temp mediump 2-component v": 1,
+        "'=' :  cannot convert from ' global mediump 3-component vector of float' to ' te": 1,
+        "'=' :  cannot convert from ' temp mediump float' to ' temp mediump 3-component v": 3
+      }
+    },
+    "v1_rule": {
+      "pass": 6,
+      "total": 10,
+      "pct": 0.6,
+      "fail_modes": {
+        "'=' :  cannot convert from ' temp mediump float' to ' temp mediump 2-component v": 2,
+        "writes_gl_FragColor,samples_u_texture": 2
+      }
+    },
+    "v2_snippet": {
+      "pass": 10,
+      "total": 10,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "v3_reference": {
+      "pass": 10,
+      "total": 10,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "v4_constraint": {
+      "pass": 6,
+      "total": 10,
+      "pct": 0.6,
+      "fail_modes": {
+        "'=' :  cannot convert from ' temp mediump float' to ' temp mediump 3-component v": 2,
+        "'dot' : no matching overloaded function found": 1,
+        "'pow' : no matching overloaded function found": 1
+      }
+    }
+  }
+}

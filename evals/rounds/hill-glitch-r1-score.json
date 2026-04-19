@@ -1,0 +1,20 @@
+{
+  "overall": {
+    "pass": 36,
+    "total": 50,
+    "pct": 0.72
+  },
+  "by_concept": {
+    "glitch": {
+      "pass": 36,
+      "total": 50,
+      "pct": 0.72,
+      "fail_modes": {
+        "'=' :  cannot convert from ' temp lowp float' to ' temp mediump 3-component vect": 3,
+        "'scalar swizzle' : not supported with this profile: es": 1,
+        "'=' :  cannot convert from ' temp mediump float' to ' temp mediump 2-component v": 10
+      }
+    }
+  },
+  "rows_count": 50
+}

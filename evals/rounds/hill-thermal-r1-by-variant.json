@@ -1,0 +1,45 @@
+{
+  "source": "evals/raw/hill-thermal-r1.jsonl",
+  "rows": 50,
+  "overall": {
+    "pass": 44,
+    "total": 50,
+    "pct": 0.88
+  },
+  "by_variant": {
+    "v0_baseline": {
+      "pass": 10,
+      "total": 10,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "v1_rule": {
+      "pass": 10,
+      "total": 10,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "v2_snippet": {
+      "pass": 7,
+      "total": 10,
+      "pct": 0.7,
+      "fail_modes": {
+        "has_main": 3
+      }
+    },
+    "v3_reference": {
+      "pass": 10,
+      "total": 10,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "v4_constraint": {
+      "pass": 7,
+      "total": 10,
+      "pct": 0.7,
+      "fail_modes": {
+        "'' :  syntax error, unexpected RIGHT_BRACE": 3
+      }
+    }
+  }
+}

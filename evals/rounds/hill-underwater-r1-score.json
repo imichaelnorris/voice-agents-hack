@@ -1,0 +1,22 @@
+{
+  "overall": {
+    "pass": 42,
+    "total": 50,
+    "pct": 0.84
+  },
+  "by_concept": {
+    "underwater": {
+      "pass": 42,
+      "total": 50,
+      "pct": 0.84,
+      "fail_modes": {
+        "'=' :  cannot convert from ' temp mediump float' to ' temp mediump 3-component v": 4,
+        "writes_gl_FragColor,samples_u_texture": 1,
+        "'causticOffset' : undeclared identifier": 1,
+        "'=' :  cannot convert from ' const float' to ' temp mediump 3-component vector o": 1,
+        "'' :  syntax error, unexpected RIGHT_BRACE": 1
+      }
+    }
+  },
+  "rows_count": 50
+}

@@ -1,0 +1,19 @@
+{
+  "overall": {
+    "pass": 39,
+    "total": 50,
+    "pct": 0.78
+  },
+  "by_concept": {
+    "invert": {
+      "pass": 39,
+      "total": 50,
+      "pct": 0.78,
+      "fail_modes": {
+        "'one' : undeclared identifier": 3,
+        "'' :  syntax error, unexpected RIGHT_BRACE": 8
+      }
+    }
+  },
+  "rows_count": 50
+}

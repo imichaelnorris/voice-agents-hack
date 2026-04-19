@@ -1,0 +1,20 @@
+{
+  "overall": {
+    "pass": 35,
+    "total": 50,
+    "pct": 0.7
+  },
+  "by_concept": {
+    "glitch": {
+      "pass": 35,
+      "total": 50,
+      "pct": 0.7,
+      "fail_modes": {
+        "'=' :  cannot convert from ' temp lowp float' to ' temp mediump 3-component vect": 5,
+        "'constructor' : too many arguments": 1,
+        "'=' :  cannot convert from ' temp mediump float' to ' temp mediump 2-component v": 9
+      }
+    }
+  },
+  "rows_count": 50
+}

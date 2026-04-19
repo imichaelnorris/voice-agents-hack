@@ -1,0 +1,48 @@
+{
+  "source": "evals/raw/hill-glitch-r2.jsonl",
+  "rows": 50,
+  "overall": {
+    "pass": 35,
+    "total": 50,
+    "pct": 0.7
+  },
+  "by_variant": {
+    "v0_baseline": {
+      "pass": 6,
+      "total": 10,
+      "pct": 0.6,
+      "fail_modes": {
+        "'=' :  cannot convert from ' temp lowp float' to ' temp mediump 3-component vect": 4
+      }
+    },
+    "v1_rule": {
+      "pass": 8,
+      "total": 10,
+      "pct": 0.8,
+      "fail_modes": {
+        "'=' :  cannot convert from ' temp lowp float' to ' temp mediump 3-component vect": 1,
+        "'constructor' : too many arguments": 1
+      }
+    },
+    "v2_snippet": {
+      "pass": 10,
+      "total": 10,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "v3_reference": {
+      "pass": 10,
+      "total": 10,
+      "pct": 1,
+      "fail_modes": {}
+    },
+    "v4_constraint": {
+      "pass": 1,
+      "total": 10,
+      "pct": 0.1,
+      "fail_modes": {
+        "'=' :  cannot convert from ' temp mediump float' to ' temp mediump 2-component v": 9
+      }
+    }
+  }
+}

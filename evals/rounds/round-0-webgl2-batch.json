@@ -1,0 +1,260 @@
+{
+  "_comment": "PSTACK GLSL ES 3.00 / WebGL 2 baseline — same 50 prompts as round-0, only system prompt differs.",
+  "systemPrompt": "You generate GLSL ES 3.00 fragment shaders for WebGL 2. Output ONLY the shader source code — no explanation, no markdown code fences, no comments outside the shader.\n\nThe shader runs over a photo. Declare these uniforms and the in/out at the top of your output:\n\n  precision mediump float;\n  uniform sampler2D u_texture;   // the input photo\n  uniform float u_time;          // seconds since start\n  uniform vec2 u_resolution;     // pixel dimensions\n  in vec2 v_uv;                  // texture coords, 0..1\n  out vec4 outColor;\n\nWrite the final color to outColor. Modify the photo according to the user's request. Clamp the final RGB to [0, 1] so additive effects don't blow out to white. Use texture() (not texture2D()) to sample.\n\nReference snippet for grid/block effects (square cells):\n\n  vec2 cell = vec2(16.0) / u_resolution;\n  vec2 snapped = (floor(v_uv / cell) + 0.5) * cell;\n  vec3 color = texture(u_texture, snapped).rgb;\n\nReference snippet for luminance-to-color-ramp shaders (e.g. thermal/false-color):\n\n  float t = dot(texture(u_texture, v_uv).rgb, vec3(0.2126, 0.7152, 0.0722));\n  vec3 col;\n  if (t < 0.25)      col = mix(vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 0.6), t / 0.25);\n  else if (t < 0.5)  col = mix(vec3(0.0, 0.0, 0.6), vec3(0.5, 0.0, 0.6), (t - 0.25) / 0.25);\n  else if (t < 0.75) col = mix(vec3(0.5, 0.0, 0.6), vec3(0.95, 0.1, 0.05), (t - 0.5) / 0.25);\n  else               col = mix(vec3(0.95, 0.1, 0.05), vec3(1.0, 1.0, 0.2), (t - 0.75) / 0.25);\n  outColor = vec4(clamp(col, 0.0, 1.0), 1.0);\n",
+  "options": {
+    "temperature": 0.7,
+    "maxTokens": 1024
+  },
+  "prompts": [
+    {
+      "id": "invert-r1",
+      "label": "invert",
+      "prompt": "invert the colors"
+    },
+    {
+      "id": "invert-r2",
+      "label": "invert",
+      "prompt": "invert the colors"
+    },
+    {
+      "id": "invert-r3",
+      "label": "invert",
+      "prompt": "invert the colors"
+    },
+    {
+      "id": "invert-r4",
+      "label": "invert",
+      "prompt": "invert the colors"
+    },
+    {
+      "id": "invert-r5",
+      "label": "invert",
+      "prompt": "invert the colors"
+    },
+    {
+      "id": "crt-r1",
+      "label": "crt",
+      "prompt": "add a CRT scanline effect"
+    },
+    {
+      "id": "crt-r2",
+      "label": "crt",
+      "prompt": "add a CRT scanline effect"
+    },
+    {
+      "id": "crt-r3",
+      "label": "crt",
+      "prompt": "add a CRT scanline effect"
+    },
+    {
+      "id": "crt-r4",
+      "label": "crt",
+      "prompt": "add a CRT scanline effect"
+    },
+    {
+      "id": "crt-r5",
+      "label": "crt",
+      "prompt": "add a CRT scanline effect"
+    },
+    {
+      "id": "underwater-r1",
+      "label": "underwater",
+      "prompt": "make it look like an underwater scene with caustics"
+    },
+    {
+      "id": "underwater-r2",
+      "label": "underwater",
+      "prompt": "make it look like an underwater scene with caustics"
+    },
+    {
+      "id": "underwater-r3",
+      "label": "underwater",
+      "prompt": "make it look like an underwater scene with caustics"
+    },
+    {
+      "id": "underwater-r4",
+      "label": "underwater",
+      "prompt": "make it look like an underwater scene with caustics"
+    },
+    {
+      "id": "underwater-r5",
+      "label": "underwater",
+      "prompt": "make it look like an underwater scene with caustics"
+    },
+    {
+      "id": "vignette-r1",
+      "label": "vignette",
+      "prompt": "apply a vignette that darkens the edges"
+    },
+    {
+      "id": "vignette-r2",
+      "label": "vignette",
+      "prompt": "apply a vignette that darkens the edges"
+    },
+    {
+      "id": "vignette-r3",
+      "label": "vignette",
+      "prompt": "apply a vignette that darkens the edges"
+    },
+    {
+      "id": "vignette-r4",
+      "label": "vignette",
+      "prompt": "apply a vignette that darkens the edges"
+    },
+    {
+      "id": "vignette-r5",
+      "label": "vignette",
+      "prompt": "apply a vignette that darkens the edges"
+    },
+    {
+      "id": "neon-r1",
+      "label": "neon",
+      "prompt": "turn it into a neon glow"
+    },
+    {
+      "id": "neon-r2",
+      "label": "neon",
+      "prompt": "turn it into a neon glow"
+    },
+    {
+      "id": "neon-r3",
+      "label": "neon",
+      "prompt": "turn it into a neon glow"
+    },
+    {
+      "id": "neon-r4",
+      "label": "neon",
+      "prompt": "turn it into a neon glow"
+    },
+    {
+      "id": "neon-r5",
+      "label": "neon",
+      "prompt": "turn it into a neon glow"
+    },
+    {
+      "id": "sepia-r1",
+      "label": "sepia",
+      "prompt": "make it look like a sepia-toned vintage photo"
+    },
+    {
+      "id": "sepia-r2",
+      "label": "sepia",
+      "prompt": "make it look like a sepia-toned vintage photo"
+    },
+    {
+      "id": "sepia-r3",
+      "label": "sepia",
+      "prompt": "make it look like a sepia-toned vintage photo"
+    },
+    {
+      "id": "sepia-r4",
+      "label": "sepia",
+      "prompt": "make it look like a sepia-toned vintage photo"
+    },
+    {
+      "id": "sepia-r5",
+      "label": "sepia",
+      "prompt": "make it look like a sepia-toned vintage photo"
+    },
+    {
+      "id": "posterize-r1",
+      "label": "posterize",
+      "prompt": "posterize the image to 4 color bands per channel"
+    },
+    {
+      "id": "posterize-r2",
+      "label": "posterize",
+      "prompt": "posterize the image to 4 color bands per channel"
+    },
+    {
+      "id": "posterize-r3",
+      "label": "posterize",
+      "prompt": "posterize the image to 4 color bands per channel"
+    },
+    {
+      "id": "posterize-r4",
+      "label": "posterize",
+      "prompt": "posterize the image to 4 color bands per channel"
+    },
+    {
+      "id": "posterize-r5",
+      "label": "posterize",
+      "prompt": "posterize the image to 4 color bands per channel"
+    },
+    {
+      "id": "pixelate-r1",
+      "label": "pixelate",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks"
+    },
+    {
+      "id": "pixelate-r2",
+      "label": "pixelate",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks"
+    },
+    {
+      "id": "pixelate-r3",
+      "label": "pixelate",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks"
+    },
+    {
+      "id": "pixelate-r4",
+      "label": "pixelate",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks"
+    },
+    {
+      "id": "pixelate-r5",
+      "label": "pixelate",
+      "prompt": "pixelate the image with chunky 16x16 pixel blocks"
+    },
+    {
+      "id": "thermal-r1",
+      "label": "thermal",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow"
+    },
+    {
+      "id": "thermal-r2",
+      "label": "thermal",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow"
+    },
+    {
+      "id": "thermal-r3",
+      "label": "thermal",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow"
+    },
+    {
+      "id": "thermal-r4",
+      "label": "thermal",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow"
+    },
+    {
+      "id": "thermal-r5",
+      "label": "thermal",
+      "prompt": "render it as a thermal camera image with cool blacks and hot whites going through blue, purple, red, yellow"
+    },
+    {
+      "id": "glitch-r1",
+      "label": "glitch",
+      "prompt": "add a chromatic-aberration glitch effect: sample red and blue channels with a slight horizontal offset"
+    },
+    {
+      "id": "glitch-r2",
+      "label": "glitch",
+      "prompt": "add a chromatic-aberration glitch effect: sample red and blue channels with a slight horizontal offset"
+    },
+    {
+      "id": "glitch-r3",
+      "label": "glitch",
+      "prompt": "add a chromatic-aberration glitch effect: sample red and blue channels with a slight horizontal offset"
+    },
+    {
+      "id": "glitch-r4",
+      "label": "glitch",
+      "prompt": "add a chromatic-aberration glitch effect: sample red and blue channels with a slight horizontal offset"
+    },
+    {
+      "id": "glitch-r5",
+      "label": "glitch",
+      "prompt": "add a chromatic-aberration glitch effect: sample red and blue channels with a slight horizontal offset"
+    }
+  ]
+}

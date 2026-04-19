@@ -1,0 +1,16 @@
+{
+  "overall": {
+    "pass": 50,
+    "total": 50,
+    "pct": 1
+  },
+  "by_concept": {
+    "pixelate": {
+      "pass": 50,
+      "total": 50,
+      "pct": 1,
+      "fail_modes": {}
+    }
+  },
+  "rows_count": 50
+}
