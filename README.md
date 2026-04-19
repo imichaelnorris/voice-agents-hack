@@ -18,7 +18,7 @@ A React Native iOS app that:
 
 1. Opens the camera on launch.
 2. After the shutter, shows a review screen with the captured photo.
-3. Holds a mic button; audio is transcribed by Whisper (via Cactus) into a prompt.
+3. Holds a mic button; audio is transcribed by **Gemma 4 E2B** itself (its multimodal audio path, via Cactus) into a prompt — same on-device weights as the shader generator, no separate STT model.
 4. Passes `{photo, prompt}` to Gemma 4 E2B (via Cactus).
 
 The app scaffold, camera capture, voice capture, model download/init, and on-device inference hookup are in place. See `App.tsx`.

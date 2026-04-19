@@ -94,8 +94,8 @@ Do not invent uniforms that aren't declared. Do not use texture2D's result as a 
 // Without these, Cactus falls back to CPU prefill and the vision encoder; with a 2B
 // multimodal model that means `std::bad_alloc` on capture-sized inputs.
 const VISION_MODEL_OPTIONS = { quantization: 'int4' as const, pro: true };
-const STT_MODEL = 'whisper-small';
-const STT_MODEL_OPTIONS = { quantization: 'int8' as const, pro: false };
+const STT_MODEL = 'gemma-4-e2b-it';
+const STT_MODEL_OPTIONS = { quantization: 'int4' as const, pro: true };
 
 // Mirrors the round-1 eval prompts in SHADER_PROMPT_ANALYSIS.md so tapping a chip
 // on the phone produces a directly comparable output to the Ollama baseline.
@@ -1016,8 +1016,10 @@ function CameraScreen({
   }, [busy, onPhoto]);
 
   // Surface the one-time model download so judges don't stare at a dead camera
-  // on first launch. Gemma dominates (~1–2 hr); whisper finishes in seconds.
-  // Cactus caches on disk, so subsequent launches skip this entirely.
+  // on first launch. Gemma 4 E2B is the only model — ~4.68 GB, 1–2 hr on
+  // spotty Wi-Fi, then cached on disk so subsequent launches skip this.
+  // Same weights power both the shader generator and the audio transcription
+  // path, so there's no second download.
   const elapsedSec =
     dlStartMs && isDownloadingAny ? Math.max(0, Math.floor((nowMs - dlStartMs) / 1000)) : 0;
   const formatElapsed = (s: number) =>
